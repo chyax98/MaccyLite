@@ -1150,7 +1150,7 @@ func pasteboardCaptureRulesSkipEmptyPlainTextUnlessRichTextPayloadExists() {
 }
 
 @Test
-func pasteboardCaptureRulesFilterDisabledDynamicAndMicrosoftBookmarkTypes() {
+func pasteboardCaptureRulesAllowOnlySupportedEnabledTypes() {
   let rules = ClipboardPasteboardCaptureRules(
     enabledTypes: [ClipboardContentType.plainText]
   )
@@ -1164,13 +1164,14 @@ func pasteboardCaptureRulesFilterDisabledDynamicAndMicrosoftBookmarkTypes() {
       ClipboardPasteboardCaptureRules.microsoftObjectLink,
       ClipboardPasteboardCaptureRules.microsoftLinkSource,
       ClipboardPasteboardCaptureRules.pdf,
-      "custom.sidecar"
+      "custom.sidecar",
+      "com.apple.WebKit.custom-pasteboard-data"
     ],
     hasEmptyPlainText: false,
     hasRichTextPayload: false
   )
 
-  #expect(selected == [ClipboardContentType.plainText, "custom.sidecar"])
+  #expect(selected == [ClipboardContentType.plainText])
 }
 
 @Test

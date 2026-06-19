@@ -30,9 +30,9 @@ public struct ClipboardPasteboardCaptureRules: Sendable, Equatable {
       return []
     }
 
-    let disabledTypes = supportedTypes.subtracting(enabledTypes)
     var selected = types
-      .subtracting(disabledTypes)
+      .intersection(supportedTypes)
+      .intersection(enabledTypes)
       .filter { !$0.starts(with: Self.dynamicTypePrefix) }
       .filter { !$0.starts(with: Self.microsoftSourcePrefix) }
 

@@ -72,7 +72,6 @@ class History {
   func delete(_ item: HistoryItemDecorator?) {
     guard let item else { return }
 
-    item.cleanupImages()
     let itemID = item.itemID
     items.removeAll { $0 == item }
 

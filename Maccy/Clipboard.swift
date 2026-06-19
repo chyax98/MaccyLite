@@ -274,8 +274,8 @@ class Clipboard: @unchecked Sendable {
   }
 
   private func hasRichTextPayload(_ item: NSPasteboardItem) -> Bool {
-    item.data(forType: .rtf)?.isEmpty == false ||
-      item.data(forType: .html)?.isEmpty == false
+    let types = Set(item.types)
+    return types.contains(.rtf) || types.contains(.html)
   }
 
   // Some applications requires window be unfocused and focused back to sync the clipboard.
