@@ -23,6 +23,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private var transientStatusResetWorkItem: DispatchWorkItem?
 
   func applicationWillFinishLaunching(_ notification: Notification) { // swiftlint:disable:this function_body_length
+    AppPreferences.migratePerformanceDefaults()
+
     // Bridge FloatingPanel via AppDelegate.
     AppState.shared.appDelegate = self
 

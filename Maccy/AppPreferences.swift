@@ -17,6 +17,22 @@ struct StorageType {
 
 enum AppPreferences {
   private static let defaults = UserDefaults.standard
+  private static let captureDefaultsVersionKey = "captureDefaultsVersion"
+  private static let currentCaptureDefaultsVersion = 1
+
+  static func migratePerformanceDefaults() {
+    guard integer(captureDefaultsVersionKey, 0) < currentCaptureDefaultsVersion else {
+      return
+    }
+
+    let oldDefault = Set(StorageType.all.types.map(\.rawValue))
+    let currentRaw = Set(defaults.stringArray(forKey: "enabledPasteboardTypes") ?? [])
+    if currentRaw == oldDefault {
+      enabledPasteboardTypes = Set(StorageType.defaultEnabled.types)
+    }
+
+    set(currentCaptureDefaultsVersion, captureDefaultsVersionKey)
+  }
 
   static var clearOnQuit: Bool {
     get { bool("clearOnQuit", false) }

@@ -175,15 +175,19 @@ class Clipboard: @unchecked Sendable {
     let copiedAt = Date.now
     pasteboard.pasteboardItems?.forEach({ item in
       let itemTypes = Set(item.types)
+      let hasRichTextPayload = hasRichTextPayload(itemTypes)
+      let regexps = ignoreRegexps()
+      let needsPlainText = !regexps.isEmpty || (itemTypes.contains(.string) && !hasRichTextPayload)
+      let plainText = needsPlainText ? item.string(forType: .string) : nil
 
-      if shouldIgnore(item) {
+      if shouldIgnore(plainText: plainText, regexps: regexps) {
         return
       }
 
       let types = captureRules.selectedItemTypes(
         from: Set(itemTypes.map(\.rawValue)),
-        hasEmptyPlainText: itemTypes.contains(.string) && isEmptyString(item),
-        hasRichTextPayload: hasRichTextPayload(item)
+        hasEmptyPlainText: itemTypes.contains(.string) && !hasRichTextPayload && isEmptyString(plainText),
+        hasRichTextPayload: hasRichTextPayload
       )
 
       orderedTypes(types).forEach { type in
@@ -241,9 +245,8 @@ class Clipboard: @unchecked Sendable {
     }
   }
 
-  private func shouldIgnore(_ item: NSPasteboardItem) -> Bool {
-    let regexps = ignoreRegexps()
-    guard !regexps.isEmpty, let string = item.string(forType: .string) else {
+  private func shouldIgnore(plainText string: String?, regexps: [NSRegularExpression]) -> Bool {
+    guard !regexps.isEmpty, let string else {
       return false
     }
 
@@ -275,16 +278,15 @@ class Clipboard: @unchecked Sendable {
     return known + types.subtracting(knownSet).sorted()
   }
 
-  private func isEmptyString(_ item: NSPasteboardItem) -> Bool {
-    guard let string = item.string(forType: .string) else {
+  private func isEmptyString(_ string: String?) -> Bool {
+    guard let string else {
       return true
     }
 
     return string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
-  private func hasRichTextPayload(_ item: NSPasteboardItem) -> Bool {
-    let types = Set(item.types)
+  private func hasRichTextPayload(_ types: Set<NSPasteboard.PasteboardType>) -> Bool {
     return types.contains(.rtf) || types.contains(.html)
   }
 

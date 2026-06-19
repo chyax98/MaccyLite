@@ -297,8 +297,10 @@ require_text(
 )
 require_text(
   "Maccy/AppPreferences.swift",
+  'captureDefaultsVersionKey = "captureDefaultsVersion"',
   "static let defaultEnabled = StorageType(types: files.types + text.types)",
   'defaults.stringArray(forKey: "enabledPasteboardTypes") ?? StorageType.defaultEnabled.types.map',
+  "if currentRaw == oldDefault",
 )
 require_text(
   "scripts/build-local-app.sh",
