@@ -1,4 +1,6 @@
-# Clipboard Lite Proposal
+# Clipboard Lite 方案档案
+
+> 档案说明：这份 proposal 是早期方案文档，用于保留设计背景。当前事实以 `docs/target-architecture.md`、`docs/development.md` 和代码为准。
 
 ## 1. 总目标
 
@@ -140,7 +142,7 @@ UI
 
 保留但降级：
 
-- 图片：App 运行时不再捕获；Core 仅保留旧图片 asset metadata 的读取和导出能力。
+- 图片：App 运行时默认捕获，但列表只读元数据，右侧预览才生成缩略图。
 - HTML/RTF：保留原始数据用于粘贴，搜索只索引提取文本/前缀。
 - 文件 URL：只记录路径和元数据，不复制文件内容。
 
@@ -158,7 +160,7 @@ UI
 
 - 小文本 inline。
 - 大文本写文件，DB 存 prefix + assetPath。
-- 图片不进入 App 运行时捕获路径。
+- 图片默认捕获；进入 asset store，列表路径不解码图片。
 - HTML/RTF 原文写文件，搜索文本单独提取。
 - 忽略规则尽量先判断类型和来源，再读取重数据。
 
@@ -655,7 +657,7 @@ asset cleanup deterministic
   - Debug `MaccyLite.app` 去 quarantine、ad-hoc 签名后启动成功。
   - 真实 NSPasteboard 捕获短文本、长 UTF-8 文本、file URL。
   - 长文本自动 asset 化，DB 保留显示前缀和搜索文本。
-  - App 运行时图片捕获入口已移除；旧 PNG 数据仍可通过 Core 读取宽高和导出 metadata。
+  - App 运行时默认捕获图片；PNG 数据通过 Core 读取宽高、生成 metadata，并可导出 asset 路径。
   - 新 Application Support 目录使用 `Clipboard.sqlite` / `Assets` / `Exports`；不在启动路径做旧库迁移或删除。
   - `clipboard-maintenance health` 检查健康。
   - `clipboard-maintenance search` 可搜到中文长文本和 file URL token。

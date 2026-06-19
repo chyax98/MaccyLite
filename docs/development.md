@@ -1,24 +1,34 @@
-# Development
+# 开发与本地验证
 
 ## 本地运行
 
-优先用 Xcode 直接 Run `Maccy` scheme。
+日常开发优先用 Xcode 运行 `Maccy` scheme。
 
 原因：
 
 - Xcode 会处理本地开发签名。
-- 菜单栏 App 和 Accessibility 粘贴依赖真实 macOS session，交互验收只在人工运行时做。
-- `CODE_SIGNING_ALLOWED=NO` 构建出来的 `.app` 只适合验证编译，不适合双击长期运行。
+- 菜单栏 App、全局快捷键、Accessibility 粘贴依赖真实 macOS session。
+- `CODE_SIGNING_ALLOWED=NO` 构建出来的 App 只适合验证编译，不适合长期运行。
 
-也可以生成一个本地人工验收用的 Release App：
+生成本地人工验收用 Release App：
 
 ```sh
 scripts/build-local-app.sh
 ```
 
-脚本会编译 `Release`、复制到 `dist/local/MaccyLite.app`、执行 ad-hoc 签名、去掉 quarantine，并验证签名。它不会启动 App，也不会申请 Accessibility 权限。
+脚本会：
 
-## 命令行编译验证
+- 编译 `Release`。
+- 复制到 `dist/local/MaccyLite.app`。
+- 执行 ad-hoc 签名。
+- 去掉 quarantine。
+- 验证签名。
+
+脚本不会启动 App，也不会申请 Accessibility 权限。
+
+## 编译验证
+
+命令行只验证工程能编译：
 
 ```sh
 xcodebuild \
@@ -30,13 +40,13 @@ xcodebuild \
   build
 ```
 
-这个命令的目标是确认工程能编译。生成的 App 可能被 Gatekeeper 拦截。
+生成的 App 可能被 Gatekeeper 拦截，不作为人工验收 App。
 
 ## Gatekeeper 提示移到废纸篓
 
 不要点“移到废纸篓”。
 
-如果确认这是本机编译产物，可以去掉 quarantine：
+确认是本机编译产物后，先去掉 quarantine：
 
 ```sh
 xattr -dr com.apple.quarantine /path/to/MaccyLite.app
@@ -48,7 +58,7 @@ xattr -dr com.apple.quarantine /path/to/MaccyLite.app
 codesign --force --deep --sign - /path/to/MaccyLite.app
 ```
 
-然后再打开：
+再打开：
 
 ```sh
 open /path/to/MaccyLite.app
@@ -56,32 +66,20 @@ open /path/to/MaccyLite.app
 
 ## 长期自用安装
 
-长期放到 `/Applications` 使用时，建议：
+推荐流程：
 
-- 先运行 `scripts/build-local-app.sh`。
-- 把 `dist/local/MaccyLite.app` 复制到 `/Applications`。
-- 第一次自动粘贴前在系统设置里授予 Accessibility 权限。App 会触发系统授权提示；未授权时只会复制到剪贴板，不会继续模拟 Cmd+V。
+1. 运行 `scripts/build-local-app.sh`。
+2. 复制 `dist/local/MaccyLite.app` 到 `/Applications`。
+3. 第一次自动粘贴前，在系统设置里授予 Accessibility 权限。
 
-## 当前测试策略
+未授权时，MaccyLite 只会复制到系统剪贴板，不会继续模拟 Cmd+V。
 
-完整的产品化自动验证入口：
+## 自动验证分层
+
+产品化默认验证，不启动 App，不抢桌面焦点：
 
 ```sh
 scripts/validate-productization.sh
-```
-
-生成带 commit、时间、性能摘要和完整日志的自动证据文件：
-
-```sh
-scripts/write-automatic-evidence.sh
-```
-
-默认输出到 `dist/validation/automatic-evidence.md`，属于本地生成物，不提交。
-
-完整压测：
-
-```sh
-FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
 只跑非 GUI 编译和测试：
@@ -90,55 +88,10 @@ FULL_PERFORMANCE=1 scripts/validate-productization.sh
 scripts/validate-non-gui.sh
 ```
 
-Core 逻辑以 SwiftPM 测试为准：
+Core 逻辑测试：
 
 ```sh
 swift test --package-path ClipboardCore
-```
-
-当前 Core 测试覆盖存储、搜索、asset、导出、file URL / 图片 metadata 导出、数据库维护、pasteboard payload 还原、每日导出调度策略、长 UTF-8 文本截断、短中文历史搜索、多文件 URL 捕获和 Core-backed History 边界。
-
-## 依赖锁定
-
-`ClipboardCore/Package.resolved` 和 `Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` 都需要跟随代码提交。产品化守卫会检查 GRDB 锁定版本和已删除依赖，依赖升级应作为单独变更处理。
-
-## Git 交付
-
-当前项目来自上游 Maccy。推送 MaccyLite 改动前，先确认 `origin` 已指向自己的 MaccyLite fork，而不是 `p0deje/Maccy`：
-
-```sh
-scripts/validate-git-delivery-safety.sh
-```
-
-如果脚本提示 `origin push remote still points to upstream Maccy`，先设置自己的 fork：
-
-```sh
-git remote set-url origin <your-maccylite-fork-url>
-```
-
-确认安全后再推送：
-
-```sh
-git push origin master
-```
-
-静态验证默认测试不会启动 App：
-
-```sh
-python3 scripts/verify-non-gui-validation.py
-```
-
-Core benchmark：
-
-```sh
-swift run --package-path ClipboardCore -c release clipboard-benchmark 100000 text --runs 20
-swift run --package-path ClipboardCore -c release clipboard-benchmark 10000 mixed --runs 20
-```
-
-带阈值的性能回归验证：
-
-```sh
-scripts/validate-performance.sh
 ```
 
 维护 CLI smoke 验证：
@@ -147,33 +100,120 @@ scripts/validate-performance.sh
 scripts/validate-maintenance.sh
 ```
 
-默认数据集较小，用于本地快速回归；完整压测可以覆盖默认参数：
+性能回归验证：
+
+```sh
+scripts/validate-performance.sh
+```
+
+完整压测：
 
 ```sh
 FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
-数据库健康检查和重建索引：
+生成自动证据：
+
+```sh
+scripts/write-automatic-evidence.sh
+```
+
+默认输出到 `dist/validation/automatic-evidence.md`，这是本地生成物，不提交。
+
+## 测试策略
+
+自动测试只覆盖非 GUI 行为：
+
+- `ClipboardCore` 存储、搜索、asset、导出、payload 恢复。
+- file URL / 图片 metadata 导出。
+- 数据库健康检查和维护命令。
+- 每日导出调度策略。
+- 长 UTF-8 文本截断。
+- 短中文历史搜索。
+- 多文件 URL 捕获。
+- Core-backed History 边界。
+
+不保留 UI test target。不要在自动测试里启动菜单栏 App、发送全局快捷键、控制系统设置或依赖 TCC 权限。
+
+真实快捷键、面板焦点、Accessibility 自动粘贴、Gatekeeper 和长期运行只做人工验收，清单见 `docs/manual-acceptance.md`。
+
+## 依赖锁定
+
+需要随代码提交的锁文件：
+
+- `ClipboardCore/Package.resolved`
+- `Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+
+依赖升级应作为单独变更处理。产品化守卫会检查 GRDB 锁定版本和已删除依赖，避免 Sparkle、Vision、SwiftData 等旧路径回流。
+
+## Git 交付
+
+推送前确认 `origin` 指向自己的 MaccyLite fork，而不是上游 `p0deje/Maccy`：
+
+```sh
+scripts/validate-git-delivery-safety.sh
+```
+
+如果脚本提示 `origin push remote still points to upstream Maccy`，先改 remote：
+
+```sh
+git remote set-url origin <your-maccylite-fork-url>
+```
+
+再推送：
+
+```sh
+git push origin master
+```
+
+## 维护 CLI
+
+数据库健康检查：
 
 ```sh
 swift run --package-path ClipboardCore -c release clipboard-maintenance health /path/to/Clipboard.sqlite
+```
+
+重建搜索索引：
+
+```sh
 swift run --package-path ClipboardCore -c release clipboard-maintenance reindex /path/to/Clipboard.sqlite
+```
+
+搜索本地库：
+
+```sh
+swift run --package-path ClipboardCore -c release clipboard-maintenance search /path/to/Clipboard.sqlite 数据库
+```
+
+检查 asset 健康：
+
+```sh
 swift run --package-path ClipboardCore -c release clipboard-maintenance assets \
   /path/to/Clipboard.sqlite \
   "/Users/xd/Library/Application Support/MaccyLite/Assets"
+```
+
+清理孤儿 asset，默认只预览：
+
+```sh
 swift run --package-path ClipboardCore -c release clipboard-maintenance cleanup-assets \
   /path/to/Clipboard.sqlite \
   "/Users/xd/Library/Application Support/MaccyLite/Assets"
+```
+
+确认后执行清理：
+
+```sh
 swift run --package-path ClipboardCore -c release clipboard-maintenance cleanup-assets \
   /path/to/Clipboard.sqlite \
   "/Users/xd/Library/Application Support/MaccyLite/Assets" \
   --apply
 ```
 
-本地库搜索和手动导出：
+手动导出指定日期：
 
 ```sh
-swift run --package-path ClipboardCore -c release clipboard-maintenance search /path/to/Clipboard.sqlite 数据库
 swift run --package-path ClipboardCore -c release clipboard-maintenance export \
   /path/to/Clipboard.sqlite \
   "/Users/xd/Library/Application Support/MaccyLite/Assets" \
@@ -181,44 +221,13 @@ swift run --package-path ClipboardCore -c release clipboard-maintenance export \
   2026-06-19
 ```
 
-App 编译以 Xcode build 为准：
+## 产品化关闭
 
-```sh
-xcodebuild \
-  -project Maccy.xcodeproj \
-  -scheme Maccy \
-  -configuration Debug \
-  -destination 'platform=macOS,arch=arm64' \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-```
+1. 运行 `scripts/write-automatic-evidence.sh`。
+2. 运行 `scripts/prepare-manual-acceptance-record.sh`。
+3. 按 `docs/manual-acceptance.md` 做人工验收。
+4. 填写 `dist/validation/manual-acceptance-record.md`。
+5. 运行 `scripts/validate-manual-acceptance-record.py`。
+6. 运行 `scripts/validate-productization-complete.sh`。
 
-旧 `MaccyTests` 已删除。那些测试依赖旧 SwiftData `HistoryItem` / `Search` / `Sorter`，和当前 Core-backed 架构不一致。
-
-项目不保留 UI test target。不要用 UI test 给系统发全局快捷键，也不要在自动测试里启动菜单栏 App。全局快捷键、Accessibility 自动粘贴依赖真实 GUI session、焦点和 TCC 权限，只做人工验收。
-
-## 人工 GUI 验收
-
-默认自动验证只覆盖 Core、静态配置和 App 编译，不启动菜单栏 App。
-
-真实快捷键、面板焦点、Accessibility 自动粘贴、TCC 授权提示都属于人工验收，清单见 [manual-acceptance.md](manual-acceptance.md)，记录模板见 [manual-acceptance-record.md](manual-acceptance-record.md)，实际结果写到 `dist/validation/manual-acceptance-record.md`。
-
-人工验收前填充记录元数据：
-
-```sh
-scripts/prepare-manual-acceptance-record.sh
-```
-
-人工记录填完后运行：
-
-```sh
-scripts/validate-manual-acceptance-record.py
-```
-
-最终关闭产品化目标前运行：
-
-```sh
-scripts/validate-productization-complete.sh
-```
-
-产品化是否可以关闭，按 [productization-acceptance-matrix.md](productization-acceptance-matrix.md) 判定。
+产品化是否完成，以 `docs/productization-acceptance-matrix.md` 为准。

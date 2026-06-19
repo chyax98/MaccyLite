@@ -1,37 +1,38 @@
-# Benchmark Report
+# 性能基准报告
 
-## Current Gate
+## 验证入口
 
-Quick regression gate:
+快速性能回归：
 
 ```sh
 scripts/validate-performance.sh
 ```
 
-Full productization gate:
+完整产品化验证：
 
 ```sh
 FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
-Default thresholds:
+默认阈值：
 
-- latest page p95 <= `20 ms`
-- CJK search p95 <= `50 ms`
-- token search p95 <= `50 ms`
-- mixed benchmark must create asset files
+- 最新列表 p95 <= `20 ms`
+- 中文搜索 p95 <= `50 ms`
+- token 搜索 p95 <= `50 ms`
+- mixed benchmark 必须生成 asset 文件
 
-## Dataset
+## 数据集
 
-Text mode inserts synthetic clipboard text rows and measures latest-page lookup, common Chinese search, and common token search.
+`text` 模式会插入合成文本历史，测量最新列表、常见中文搜索和常见 token 搜索。
 
-Mixed mode inserts short text, long text stored through `ClipboardCapture` / `StoragePolicy` / `AssetStore`, HTML, RTF, file URL, and image asset rows. Runtime App captures images by default, while list rendering stays metadata-first and preview generates bounded thumbnails.
+`mixed` 模式会插入短文本、大文本、HTML、RTF、file URL 和图片记录。大文本、富文本和图片通过 `ClipboardCapture` / `StoragePolicy` / `AssetStore` 进入 asset 文件；列表路径只读摘要和元数据，预览路径生成受限缩略图。
 
-## 2026-06-19 Baseline
+## 当前基线
 
-The full gate previously showed latest-page and search p95 below the thresholds on both text and mixed datasets. The important regression boundary is the p95 threshold in `scripts/validate-performance.sh`; historical raw output is intentionally not duplicated here because benchmark output changes with schema and metric cleanup.
+最近一次完整闸门显示：`text` 和 `mixed` 数据集的最新列表、中文搜索、token 搜索 p95 都低于阈值。具体数值会随 schema、机器状态和 benchmark 参数变化，最终以 `scripts/validate-performance.sh` 的阈值为准。
 
-Runtime sampling:
+运行时采样：
 
-- App logs pasteboard capture samples.
-- Slow capture samples are promoted to warning according to `ClipboardRuntimePerformancePolicy`.
+- App 会记录 pasteboard 捕获耗时。
+- 慢样本由 `ClipboardRuntimePerformancePolicy` 提升为 warning。
+- 如果真实使用中出现卡顿，先看 `Clipboard capture sample` 日志，再判断是 pasteboard 读取、Core 插入还是 UI 预览路径。

@@ -1,99 +1,106 @@
 # 目标架构
 
-目标不是“优化 Maccy”，而是做一个自用、中文优先、长期流畅的 macOS 快捷粘贴工具。
+MaccyLite 的目标不是继续“优化原 Maccy”，而是做一个自用、中文优先、长期流畅的 macOS 快捷粘贴工具。
 
-## 结论
+## 架构结论
 
 不采用 Tauri 全重写。
 
-采用：
+当前采用：
 
 ```text
-Swift/AppKit 原生壳
-+ GRDB/SQLite 核心存储
+Swift / AppKit 原生壳
++ GRDB / SQLite 核心存储
 + 文件资产库
-+ FTS5 混合搜索
++ FTS5 + LIKE 混合搜索
 + 后台每日导出
 ```
 
-Rust/Tantivy 不作为主架构。它只保留为以后“深度全文搜索插件”的候选项。
+Rust / Tantivy 不作为主架构，只保留为以后“深度全文搜索插件”的候选项。
 
 原因：
 
 - 剪贴板、NSPanel、Accessibility 粘贴、前台 App 恢复都是 macOS 原生 API 场景。
-- Tauri 能做全局快捷键、托盘、剪贴板读写，但核心体验仍要回到原生桥接。
-- 这个产品的数据规模是个人级，不是千万文档搜索服务。
-- SQLite/FTS5 足够把 10 万级历史做到毫秒级响应。
+- Tauri 能做托盘、全局快捷键、剪贴板读写，但核心体验仍要回到原生桥接。
+- 个人级剪贴板历史不是千万文档搜索服务。
+- SQLite / FTS5 足够支撑 10 万级历史的毫秒级查询。
 - SwiftData 不适合当核心库，因为它隐藏查询、迁移、索引和分页控制。
 
 ## 产品边界
 
 保留：
 
-- 监听剪贴板
-- 快捷键呼出
-- 搜索
-- 快速粘贴
-- Pin
-- 忽略 App / 类型 / 正则
-- 大对象文件化
-- 每日导出给 AI 分析
+- 监听剪贴板。
+- 快捷键呼出。
+- 搜索。
+- 快速粘贴。
+- Pin。
+- 忽略 App / 类型 / 正则。
+- 文本、HTML、RTF、图片、file URL。
+- 大对象文件化。
+- 每日导出给 AI 分析。
 
 删除：
 
-- OCR / Vision
-- 多语言资源，只保留 `zh-Hans`
-- Sparkle 更新
-- App Store review
-- AppIntents / Shortcuts
-- 通知音效
-- 复杂图片智能分析
+- OCR / Vision。
+- 多语言资源，只保留 `zh-Hans`。
+- Sparkle 更新。
+- App Store review 相关路径。
+- AppIntents / Shortcuts。
+- 通知音效。
+- 复杂图片智能分析。
 
 ## 数据流
 
 ```mermaid
 flowchart LR
-  A["NSPasteboard 变化"] --> B["CaptureWorker"]
-  B --> C["StoragePolicy"]
-  C -->|小文本| D["SQLite item_contents.inline_data"]
-  C -->|大文本/图片/RTF/HTML| E["AssetStore 文件"]
-  E --> F["SQLite asset_path/hash/byte_count"]
-  D --> G["SearchIndexer"]
+  A["NSPasteboard 变化"] --> B["Clipboard.swift"]
+  B --> C["ClipboardCapture"]
+  C --> D["StoragePolicy"]
+  D -->|小文本| E["SQLite inline_data"]
+  D -->|大文本 / HTML / RTF / 图片| F["AssetStore 文件"]
+  E --> G["SQLite 元数据"]
   F --> G
-  G --> H["FTS5 unicode61/trigram"]
-  H --> I["Popup ViewModel 分页结果"]
-  I --> J["NSPanel 列表"]
-  J --> K["PasteController"]
-  K --> L["恢复前台 App + 写回 pasteboard + Cmd+V"]
+  G --> H["FTS5 / LIKE 搜索"]
+  H --> I["NSPanel 列表"]
+  G --> J["右侧预览"]
+  F --> J
+  I --> K["PasteController"]
+  K --> L["写回 pasteboard + 可选 Cmd+V"]
 ```
 
-## 模块
+## 模块边界
 
 ```text
 AppShell
-  MenuBarController
-  HotKeyController
-  PopupPanelController
-  PasteController       // 发送自动 Cmd+V；进入系统事件前检查 Accessibility 权限
+  AppDelegate
+  Clipboard.swift
+  AppKitHistoryPanel
+  PasteController
+  DailyExportScheduler
+  Settings
 
 ClipboardCore
   ClipboardCapture
+  ClipboardPasteboardCaptureRules
   StoragePolicy
   AssetStore
   ClipboardDatabase
-  SearchIndex
+  ClipboardHistoryStore
+  ClipboardPasteboardPayloadResolver
   DailyExporter
-
-UI
-  HistoryList
-  SearchBox
-  PreviewPane
-  Settings
 ```
+
+原则：
+
+- AppShell 负责 macOS 系统集成和 UI。
+- ClipboardCore 负责可测试的业务逻辑。
+- 自动测试尽量落在 ClipboardCore。
+- 真实桌面行为只走人工验收。
 
 ## 存储设计
 
-SQLite 表：
+SQLite 主表：
 
 ```text
 clipboard_items
@@ -103,6 +110,8 @@ clipboard_items
   primary_type
   display_text
   search_text
+  content_fingerprint
+  has_image
   is_pinned
   copy_count
 
@@ -114,6 +123,8 @@ clipboard_contents
   inline_data
   asset_path
   content_hash
+  image_width
+  image_height
 
 clipboard_search
   item_id
@@ -122,6 +133,12 @@ clipboard_search
 clipboard_trigram
   item_id
   text
+
+daily_exports
+  day
+  path
+  item_count
+  exported_at
 ```
 
 文件资产：
@@ -140,29 +157,47 @@ clipboard_trigram
 ```mermaid
 flowchart TD
   Q["用户输入 query"] --> A{"query 为空?"}
-  A -->|是| B["按 copied_at desc 分页"]
-  A -->|否| C{"query 长度 <= 2?"}
-  C -->|是| D["最近 N 条 LIKE，限制范围"]
-  C -->|否| E{"包含中文连续子串?"}
-  E -->|是| F["trigram FTS5"]
-  E -->|否| G["unicode61 FTS5"]
-  F --> H["合并去重，按 recency 排序"]
-  G --> H
-  D --> H
+  A -->|是| B["按 copied_at / pin 读取最新页"]
+  A -->|否| C["近期 LIKE"]
+  C --> D{"query 长度 <= 2?"}
+  D -->|是且结果不足| E["全量 LIKE 兜底"]
+  D -->|否| F{"包含中文?"}
+  F -->|是| G["trigram FTS5"]
+  F -->|否| H["unicode61 FTS5"]
+  G --> I["合并去重"]
+  H --> I
+  E --> I
+  C --> I
 ```
+
+搜索目标是“可预期优先于极限省 CPU”：
+
+- 短中文词不能静默搜不到旧历史。
+- 近期 substring 要优先参与合并。
+- FTS 用于快速扩大结果集。
+- UI 只拿有限结果，不持有全量历史。
+
+## 预览策略
+
+- 列表只展示一行摘要和图标。
+- 右侧详情才读取更多内容。
+- 普通文本可以完整展示。
+- 超大文本只读前缀预览，粘贴仍恢复完整文本。
+- 图片生成受限缩略图。
+- 文件项展示文件语义，支持多文件路径列表和 QuickLook 缩略图。
 
 ## 性能原则
 
 - 弹窗打开不加载全量历史。
-- 列表只读 `display_text` 和元数据。
-- 预览才读资产文件。
-- 粘贴才读完整 payload。
-- 搜索默认不扫完整资产文件。
-- 每日导出跑后台任务，不占用弹窗热路径。
+- 列表不读完整 asset。
+- 搜索不扫完整 asset。
+- 预览按选中项懒加载。
+- 粘贴才读取完整 payload。
+- 每日导出在后台队列运行，不进入弹窗热路径。
 
 ## 当前执行方向
 
-1. 新建 `ClipboardCore`，用 GRDB 替代 SwiftData。
-2. 把 Maccy 现有 UI 当外壳参考，不继续依赖它的 SwiftData 模型。
-3. 先跑通核心库：建库、插入、搜索、分页、导出。
-4. 再把 AppShell 接到新核心库。
+1. 保持 AppShell 足够薄，只做 macOS 集成和 UI。
+2. 保持 ClipboardCore 可测试，核心行为优先写非 GUI 测试。
+3. 性能问题先区分 pasteboard 读取、SQLite 查询、asset IO、UI layout。
+4. 新功能优先看是否会进入弹窗热路径；会进入就必须有上限、分页或懒加载。

@@ -185,8 +185,8 @@ require_text(
 )
 require_text(
   "docs/release-notes.md",
-  "Existing Maccy clipboard history is not migrated.",
-  "Existing Maccy settings are not migrated.",
+  "不迁移旧 Maccy 剪贴板历史。",
+  "不迁移旧 Maccy 设置。",
   "~/Library/Application Support/MaccyLite/",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
@@ -210,9 +210,9 @@ require_text(
 require_text(
   "docs/benchmark-report.md",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
-  "latest page p95 <= `20 ms`",
-  "CJK search p95 <= `50 ms`",
-  "mixed benchmark must create asset files",
+  "最新列表 p95 <= `20 ms`",
+  "中文搜索 p95 <= `50 ms`",
+  "mixed benchmark 必须生成 asset 文件",
 )
 require_text(
   "docs/development.md",
@@ -231,7 +231,7 @@ require_text(
 )
 require_text(
   "docs/manual-acceptance-record.md",
-  "## Build",
+  "## 构建信息",
   "scripts/prepare-manual-acceptance-record.sh",
   "scripts/validate-manual-acceptance-record.py",
   "dist/validation/manual-acceptance-record.md",
@@ -249,8 +249,8 @@ require_text(
   "已授权自动粘贴",
   "每日导出默认关闭",
   "长期运行观察",
-  "## Failure Log",
-  "Follow-up Rule",
+  "## 失败记录",
+  "后续处理规则",
 )
 require_text(
   "docs/manual-acceptance.md",
@@ -329,7 +329,8 @@ require_text(
 )
 require_text(
   "docs/performance-triage.md",
-  "Runtime App captures images by default",
+  "图片默认 asset-backed",
+  "右侧预览才生成受限缩略图",
 )
 reject_text(
   "Maccy/Observables/AppState.swift",

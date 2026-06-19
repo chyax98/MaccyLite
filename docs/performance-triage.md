@@ -1,47 +1,43 @@
-# Performance Triage
+# 性能排查
 
-Date: 2026-06-19
+更新时间：2026-06-20
 
-## Current Baseline
+## 当前基线
 
-The fork is now `MaccyLite`, a Core-backed quick paste clipboard manager.
+MaccyLite 是 Core-backed 的快捷粘贴工具。旧 SwiftData 热路径已经移除：
 
-The old SwiftData hot path has been removed:
+- 无 `HistoryItem` / `HistoryItemContent` SwiftData 模型。
+- 无 `Storage.shared` SwiftData container。
+- 无旧 `Search` / `Sorter`。
+- 无 Fuse fuzzy-search 依赖。
+- 无旧 `MaccyTests` target。
 
-- No `HistoryItem` / `HistoryItemContent` model.
-- No `Storage.shared` SwiftData container.
-- No old `Search` / `Sorter`.
-- No Fuse fuzzy-search dependency.
-- No old `MaccyTests` target.
-
-The current hot path is:
+当前热路径：
 
 ```mermaid
 flowchart LR
   A["NSPasteboard"] --> B["Clipboard.swift"]
   B --> C["ClipboardCapture"]
   C --> D["StoragePolicy"]
-  D --> E["SQLite metadata"]
-  D --> F["AssetStore files"]
-  E --> G["FTS5 search"]
-  G --> H["History / Popup list"]
+  D --> E["SQLite 元数据"]
+  D --> F["AssetStore 文件"]
+  E --> G["FTS5 / LIKE 搜索"]
+  G --> H["历史面板列表"]
   H --> I["Clipboard.copy"]
-  I --> J["NSPasteboard + optional Cmd+V"]
+  I --> J["NSPasteboard + 可选 Cmd+V"]
 ```
 
-## Verification Commands
+## 验证命令
 
-Core tests:
+Core 测试：
 
 ```sh
-cd /Users/xd/p/Maccy/ClipboardCore
-swift test
+swift test --package-path ClipboardCore
 ```
 
-App build:
+App 编译：
 
 ```sh
-cd /Users/xd/p/Maccy
 xcodebuild \
   -project Maccy.xcodeproj \
   -scheme Maccy \
@@ -51,124 +47,85 @@ xcodebuild \
   build
 ```
 
-Benchmarks:
+性能基准：
 
 ```sh
-cd /Users/xd/p/Maccy/ClipboardCore
-swift run -c release clipboard-benchmark 100000 text --runs 20
-swift run -c release clipboard-benchmark 10000 mixed --runs 20
+scripts/validate-performance.sh
 ```
 
-Database maintenance:
+完整压测：
 
 ```sh
-cd /Users/xd/p/Maccy/ClipboardCore
-swift run -c release clipboard-maintenance health /path/to/Clipboard.sqlite
-swift run -c release clipboard-maintenance reindex /path/to/Clipboard.sqlite
-swift run -c release clipboard-maintenance search /path/to/Clipboard.sqlite 数据库
-swift run -c release clipboard-maintenance export /path/to/Clipboard.sqlite /path/to/Assets /path/to/Exports 2026-06-19
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
-GUI acceptance:
+维护命令：
 
-- XCUITest/e2e is not part of the default validation path.
-- The project does not keep a `MaccyUITests` target.
-- Global shortcut, popup focus, and Accessibility paste are manual acceptance checks because they require the real macOS desktop session.
+```sh
+swift run --package-path ClipboardCore -c release clipboard-maintenance health /path/to/Clipboard.sqlite
+swift run --package-path ClipboardCore -c release clipboard-maintenance reindex /path/to/Clipboard.sqlite
+swift run --package-path ClipboardCore -c release clipboard-maintenance search /path/to/Clipboard.sqlite 数据库
+swift run --package-path ClipboardCore -c release clipboard-maintenance export /path/to/Clipboard.sqlite /path/to/Assets /path/to/Exports 2026-06-19
+```
 
-## Current Performance Controls
+## 性能控制点
 
-Storage:
+存储：
 
-- SQLite via GRDB.
-- WAL enabled.
-- `synchronous=NORMAL`.
-- FTS5 unicode61 table for token search.
-- FTS5 trigram table for CJK search.
-- Indexed latest queries by copied time / pin state.
+- GRDB + SQLite。
+- WAL。
+- `synchronous=NORMAL`。
+- FTS5 unicode61 用于 token 搜索。
+- FTS5 trigram 用于中文搜索。
+- latest 查询按时间和 pin 状态索引。
 
-Large objects:
+大对象：
 
-- Small text stays inline.
-- Large text becomes an asset file with inline prefix.
-- HTML/RTF can become asset-backed.
-- Images are asset-backed by default.
-- File URLs store URL data, not copied file contents.
+- 小文本 inline。
+- 大文本写入 asset 文件，同时保存 inline 前缀。
+- HTML / RTF 可 asset-backed。
+- 图片默认 asset-backed。
+- file URL 存 URL 数据，不复制文件内容。
 
-Search:
+搜索：
 
-- Empty query reads latest page.
-- Recent bounded LIKE runs before broader FTS expansion.
-- Common terms avoid full FTS + recency sort when recent results are enough.
+- 空 query 只读最新列表页。
+- 近期 LIKE 先参与合并，保证用户刚复制的 substring 容易命中。
+- 非短查询走 FTS5，再按规则合并去重。
+- 短中文查询在近期结果不足时会做全量 LIKE 兜底，避免旧历史静默搜不到。
+- 搜索只查 `search_text`，不扫完整 asset 文件。
 
-Preview:
+预览：
 
-- List items use lightweight display text.
-- Images are not decoded in the database hot path.
-- Runtime App captures images by default; list rendering stays metadata-first, preview generates bounded thumbnails, and daily export writes image metadata plus asset paths.
+- 列表只使用 `display_text` 和元数据。
+- 文件项优先按文件语义展示；如果同时带图片 payload，图片只作为缩略图来源，不改变类型语义。
+- 图片不在数据库热路径解码；右侧预览才生成受限缩略图。
+- 普通文本右侧完整展示。
+- 超大文本右侧只读 asset 前缀；粘贴仍读取完整 payload。
 
-Runtime sampling:
+运行时采样：
 
-- Clipboard capture logs `types`, pasteboard read time, Core insert time, and total capture time through `com.local.MaccyLite.clipboard`.
-- Automatic paste checks Accessibility permission before posting Cmd+V; without permission it logs and returns instead of silently pretending to paste.
-- Selecting a history item resolves the full item and asset-backed pasteboard payload on a background task; the main thread only writes prepared data to `NSPasteboard`.
+- Clipboard capture 日志包含 `types`、pasteboard read、Core insert、total capture。
+- 超过阈值会写 warning。
+- 自动粘贴前检查 Accessibility 权限；未授权不发送 Cmd+V。
+- 选择历史项时，完整 item 和 asset-backed payload 在后台准备；主线程只写已经准备好的数据到 `NSPasteboard`。
 
-Daily export:
+每日导出：
 
-- Runs outside copy/search/popup hot path.
-- App timer exports yesterday at configured time.
-- Startup catch-up handles missed days.
-- Manual today/yesterday export is available from settings and runs on the export queue.
-- Markdown output includes content type, byte count, file URL, image dimensions, and asset path.
+- 不在复制、搜索、弹窗热路径。
+- 定时导出昨日内容。
+- 启动时补导出漏掉的日期。
+- 设置页可手动导出今天/昨天。
+- Markdown 包含类型、字节数、file URL、图片尺寸和 asset 路径。
 
-Maintenance:
+## 排查顺序
 
-- `ClipboardDatabase.healthReport()` checks SQLite integrity, foreign keys, item/content counts, FTS index counts, missing FTS rows, and orphan FTS rows.
-- `ClipboardDatabase.rebuildSearchIndexes()` rebuilds both unicode61 and trigram FTS5 tables from `clipboard_items.search_text`.
-- `clipboard-maintenance` exposes `health`, `reindex`, `search`, `export`, and `cleanup-assets` commands for local repair/inspection.
+1. 面板打开慢：看 latest 查询、列表渲染、是否读了完整 asset。
+2. 搜索慢：先跑 `scripts/validate-performance.sh`，再用 maintenance search 复现 query。
+3. 复制时卡：看 `Clipboard capture sample`，区分 pasteboard read 和 Core insert。
+4. 选中预览卡：看是否是图片缩略图、QuickLook 文件预览或超大文本 layout。
+5. 粘贴慢：看 payload 是否 asset-backed，确认是读 asset 还是目标 App 接收慢。
 
-## Latest Results
+## 最新状态
 
-See [benchmark-report.md](/Users/xd/p/Maccy/docs/benchmark-report.md).
-
-Text 100k:
-
-- latest p95: `0.1437777000000002 ms`
-- CJK search p95: `0.10548395 ms`
-- token search p95: `0.08930239999999999 ms`
-
-Mixed 10k:
-
-- latest p95: `0.10635830000000021 ms`
-- CJK search p95: `0.23660450000000005 ms`
-- token search p95: `0.19281905 ms`
-- asset bytes: `114651068`
-
-Runtime smoke on local Debug app:
-
-- App path: `/Users/xd/Library/Developer/Xcode/DerivedData/Maccy-gsnvaakvyfjvpndgzjgsbqmynncg/Build/Products/Debug/MaccyLite.app`.
-- Runtime DB: `/Users/xd/Library/Application Support/MaccyLite/Clipboard.sqlite`.
-- Captured real NSPasteboard data:
-  - short text with Chinese token.
-  - long UTF-8 text containing `数据库`, repeated 5000 times.
-  - file URL pointing to a local temp file.
-  - 1x1 PNG image.
-- Verified DB shape:
-  - short text inline.
-  - long text asset-backed with non-empty display/search prefix.
-  - file URL inline.
-  - PNG old-data sample asset-backed with width/height.
-- Verified maintenance:
-  - health report was healthy.
-  - `search 数据库` returned text rows.
-  - `search maccylite-file-url-smoke` returned the file URL row.
-  - manual export created `ManualExports/2026-06-19.md`.
-
-Bug found during runtime smoke:
-
-- Long UTF-8 text could be cut in the middle of a scalar when producing display/search prefixes.
-- Fixed by truncating on `String.UTF8View.Index`, not raw `Data.prefix`.
-- Covered by `captureKeepsSearchTextWhenLongUTF8TextIsTruncated`.
-
-## Remaining Work
-
-- Run final interactive performance pass for shortcut popup/search/paste with Accessibility permission.
+当前自动基线见 `docs/benchmark-report.md`。最终体感以 `docs/manual-acceptance.md` 的人工验收为准。
