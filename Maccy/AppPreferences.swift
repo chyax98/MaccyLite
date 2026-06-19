@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Foundation
 
 struct StorageType {
@@ -138,6 +139,16 @@ enum AppPreferences {
   static var pasteByDefault: Bool {
     get { bool("pasteByDefault", true) }
     set { set(newValue, "pasteByDefault") }
+  }
+
+  static var popupHotKeyKeyCode: UInt32 {
+    get { UInt32(integer("popupHotKeyKeyCode", Int(kVK_ANSI_C))) }
+    set { set(Int(newValue), "popupHotKeyKeyCode") }
+  }
+
+  static var popupHotKeyModifiers: UInt32 {
+    get { UInt32(integer("popupHotKeyModifiers", optionKey)) }
+    set { set(Int(newValue), "popupHotKeyModifiers") }
   }
 
   static var pinTo: PinsPosition {

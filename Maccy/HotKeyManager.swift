@@ -44,8 +44,8 @@ final class HotKeyManager {
 
     let hotKeyID = EventHotKeyID(signature: fourCharCode("MCLT"), id: 1)
     RegisterEventHotKey(
-      UInt32(kVK_ANSI_C),
-      UInt32(cmdKey | shiftKey),
+      AppPreferences.popupHotKeyKeyCode,
+      AppPreferences.popupHotKeyModifiers,
       hotKeyID,
       GetApplicationEventTarget(),
       0,
