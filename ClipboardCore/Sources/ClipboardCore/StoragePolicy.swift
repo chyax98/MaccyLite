@@ -19,6 +19,7 @@ public struct StoragePolicy: Sendable {
   public var previewLimit: Int
   public var displayCharacterLimit: Int
   public var searchTextLimit: Int
+  public var richTextSearchTextLimit: Int
   public var storeImagesAsAssets: Bool
 
   public init(
@@ -28,6 +29,7 @@ public struct StoragePolicy: Sendable {
     previewLimit: Int = 8 * 1024,
     displayCharacterLimit: Int = 1_000,
     searchTextLimit: Int = 64 * 1024,
+    richTextSearchTextLimit: Int = 16 * 1024,
     storeImagesAsAssets: Bool = true
   ) {
     self.textInlineLimit = textInlineLimit
@@ -36,6 +38,7 @@ public struct StoragePolicy: Sendable {
     self.previewLimit = previewLimit
     self.displayCharacterLimit = displayCharacterLimit
     self.searchTextLimit = searchTextLimit
+    self.richTextSearchTextLimit = richTextSearchTextLimit
     self.storeImagesAsAssets = storeImagesAsAssets
   }
 

@@ -51,10 +51,10 @@ class History {
   }
 
   @MainActor
-  func delete(_ item: HistoryItemDecorator?) {
+  func delete(_ item: ClipboardListItem?) {
     guard let item else { return }
 
-    let itemID = item.itemID
+    let itemID = item.id
     Task.detached(priority: .utility) {
       ClipboardCoreStore.shared.delete(itemID: itemID)
       let latest = ClipboardCoreStore.shared.latestUnpinnedDisplayText()
@@ -66,7 +66,7 @@ class History {
   }
 
   @MainActor
-  func select(_ item: HistoryItemDecorator?) {
+  func select(_ item: ClipboardListItem?) {
     guard let item else {
       return
     }
@@ -104,11 +104,11 @@ class History {
 
   @MainActor
   private func copy(
-    _ item: HistoryItemDecorator,
+    _ item: ClipboardListItem,
     removeFormatting: Bool = false,
     pasteAfter: Bool = false
   ) {
-    let itemID = item.itemID
+    let itemID = item.id
     Task {
       let prepared = await Task.detached(priority: .userInitiated) {
         guard let storedItem = ClipboardCoreStore.shared.item(id: itemID) else {
@@ -128,7 +128,7 @@ class History {
       switch prepared {
       case .success(let prepared):
         Clipboard.shared.copy(contents: prepared.1, sourceApp: prepared.0)
-        updateMenuText(item.text)
+        updateMenuText(item.displayText)
         if pasteAfter {
           Clipboard.shared.paste()
         }
@@ -165,5 +165,4 @@ class History {
     cachedMenuText = text
     menuTextLock.unlock()
   }
-
 }

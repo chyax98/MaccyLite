@@ -464,6 +464,7 @@ for forbidden in [
   "KeyboardLayout.swift",
   "MenuIcon.swift",
   "Throttler.swift",
+  "HistoryItemDecorator.swift",
   "com.p0deje",
   "org.p0deje",
 ]:
@@ -535,6 +536,7 @@ for forbidden_path in [
   "Maccy/SoftwareUpdater.swift",
   "Maccy/Notifier.swift",
   "Maccy/Throttler.swift",
+  "Maccy/Observables/HistoryItemDecorator.swift",
   "Maccy/Search.swift",
   "Maccy/Sorter.swift",
   "Maccy/Storage.swift",

@@ -244,7 +244,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         arguments: [limit, offset]
       )
 
-      return try rows.map { try storedItem(from: $0, db: db) }
+      return try storedItems(from: rows, db: db)
     }
   }
 
@@ -261,8 +261,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
       }
 
       if trimmed.count <= 2 {
-        let expanded = try fullLikeSearch(db, query: trimmed, limit: limit)
-        return mergeSearchResults(primary: recent, secondary: expanded, limit: limit)
+        return recent
       }
 
       let useTrigram = containsCJK(trimmed)
@@ -294,9 +293,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
   public func searchStored(_ query: String, limit: Int = 50) throws -> [ClipboardStoredItem] {
     let results = try search(query, limit: limit)
     return try writer.read { db in
-      try results.compactMap { result in
-        try storedItem(id: result.id, db: db)
-      }
+      try storedItems(ids: results.map(\.id), db: db)
     }
   }
 
@@ -319,9 +316,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         arguments: [start.timeIntervalSince1970, end.timeIntervalSince1970]
       )
 
-      return try rows.map { row in
-        try storedItem(from: row, db: db)
-      }
+      return try storedItems(from: rows, db: db)
     }
   }
 
@@ -339,23 +334,38 @@ public final class ClipboardDatabase: @unchecked Sendable {
     }
   }
 
-  public func items(from start: Date, to end: Date, limit: Int, offset: Int) throws -> [ClipboardStoredItem] {
+  public func items(
+    from start: Date,
+    to end: Date,
+    afterCopiedAt: Date? = nil,
+    afterID: String? = nil,
+    limit: Int
+  ) throws -> [ClipboardStoredItem] {
     try writer.read { db in
+      let cursorCopiedAt = afterCopiedAt?.timeIntervalSince1970
+      let cursorID = afterID ?? ""
       let rows = try Row.fetchAll(
         db,
         sql: """
         SELECT id, copied_at, source_app, primary_type, display_text, search_text, is_pinned, copy_count
         FROM clipboard_items
         WHERE copied_at >= ? AND copied_at < ?
-        ORDER BY copied_at ASC
-        LIMIT ? OFFSET ?
+          AND (? IS NULL OR copied_at > ? OR (copied_at = ? AND id > ?))
+        ORDER BY copied_at ASC, id ASC
+        LIMIT ?
         """,
-        arguments: [start.timeIntervalSince1970, end.timeIntervalSince1970, limit, offset]
+        arguments: [
+          start.timeIntervalSince1970,
+          end.timeIntervalSince1970,
+          cursorCopiedAt,
+          cursorCopiedAt,
+          cursorCopiedAt,
+          cursorID,
+          limit
+        ]
       )
 
-      return try rows.map { row in
-        try storedItem(from: row, db: db)
-      }
+      return try storedItems(from: rows, db: db)
     }
   }
 
@@ -663,6 +673,13 @@ public final class ClipboardDatabase: @unchecked Sendable {
       """)
     }
 
+    migrator.registerMigration("addClipboardItemExportOrderIndex") { db in
+      try db.execute(sql: """
+      CREATE INDEX clipboard_items_export_day_order
+      ON clipboard_items(copied_at ASC, id ASC)
+      """)
+    }
+
     return migrator
   }
 
@@ -720,30 +737,6 @@ public final class ClipboardDatabase: @unchecked Sendable {
       LIMIT ?
       """,
       arguments: [recentSearchScope, likePattern(query), query, prefixPattern(query), limit]
-    )
-  }
-
-  private func fullLikeSearch(
-    _ db: Database,
-    query: String,
-    limit: Int
-  ) throws -> [ClipboardListItem] {
-    try fetchListItems(
-      db,
-      sql: """
-      SELECT \(listItemColumns(alias: "i"))
-      FROM clipboard_items i
-      WHERE search_text LIKE ? ESCAPE '\\'
-      ORDER BY
-        CASE
-          WHEN i.search_text = ? COLLATE NOCASE THEN 0
-          WHEN i.search_text LIKE ? ESCAPE '\\' THEN 1
-          ELSE 2
-        END,
-        i.copied_at DESC
-      LIMIT ?
-      """,
-      arguments: [likePattern(query), query, prefixPattern(query), limit]
     )
   }
 
@@ -840,6 +833,62 @@ public final class ClipboardDatabase: @unchecked Sendable {
     "\(query.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(of: "_", with: "\\_"))%"
   }
 
+  private func storedItems(ids: [String], db: Database) throws -> [ClipboardStoredItem] {
+    guard !ids.isEmpty else {
+      return []
+    }
+
+    let placeholders = Array(repeating: "?", count: ids.count).joined(separator: ",")
+    let rows = try Row.fetchAll(
+      db,
+      sql: """
+      SELECT id, copied_at, source_app, primary_type, display_text, search_text, is_pinned, copy_count
+      FROM clipboard_items
+      WHERE id IN (\(placeholders))
+      """,
+      arguments: StatementArguments(ids)
+    )
+    let itemsByID = Dictionary(uniqueKeysWithValues: try storedItems(from: rows, db: db).map { ($0.id, $0) })
+    return ids.compactMap { itemsByID[$0] }
+  }
+
+  private func storedItems(from rows: [Row], db: Database) throws -> [ClipboardStoredItem] {
+    let ids: [String] = rows.map { $0["id"] }
+    let contentsByID = try contentsByItemID(itemIDs: ids, db: db)
+
+    return rows.map { row in
+      let id: String = row["id"]
+      return storedItem(from: row, contents: contentsByID[id] ?? [])
+    }
+  }
+
+  private func contentsByItemID(itemIDs: [String], db: Database) throws -> [String: [ClipboardStoredContent]] {
+    guard !itemIDs.isEmpty else {
+      return [:]
+    }
+
+    let placeholders = Array(repeating: "?", count: itemIDs.count).joined(separator: ",")
+    let rows = try Row.fetchAll(
+      db,
+      sql: """
+      SELECT
+        item_id, pasteboard_type, byte_count, inline_data, asset_path, content_hash,
+        image_width, image_height
+      FROM clipboard_contents
+      WHERE item_id IN (\(placeholders))
+      ORDER BY item_id ASC, id ASC
+      """,
+      arguments: StatementArguments(itemIDs)
+    )
+
+    var grouped: [String: [ClipboardStoredContent]] = [:]
+    for row in rows {
+      let itemID: String = row["item_id"]
+      grouped[itemID, default: []].append(storedContent(from: row))
+    }
+    return grouped
+  }
+
   private func contents(for itemID: String, db: Database) throws -> [ClipboardStoredContent] {
     let rows = try Row.fetchAll(
       db,
@@ -875,7 +924,12 @@ public final class ClipboardDatabase: @unchecked Sendable {
 
   private func storedItem(from row: Row, db: Database) throws -> ClipboardStoredItem {
     let id: String = row["id"]
-    return try ClipboardStoredItem(
+    return try storedItem(from: row, contents: contents(for: id, db: db))
+  }
+
+  private func storedItem(from row: Row, contents: [ClipboardStoredContent]) -> ClipboardStoredItem {
+    let id: String = row["id"]
+    return ClipboardStoredItem(
       id: id,
       copiedAt: Date(timeIntervalSince1970: row["copied_at"]),
       sourceApp: row["source_app"],
@@ -884,7 +938,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
       searchText: row["search_text"],
       isPinned: (row["is_pinned"] as Int) != 0,
       copyCount: row["copy_count"],
-      contents: contents(for: id, db: db)
+      contents: contents
     )
   }
 

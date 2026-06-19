@@ -25,7 +25,6 @@
 		DA19691C2C3F3EAC00258481 /* Collection+Surrounding.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA19691B2C3F3EAC00258481 /* Collection+Surrounding.swift */; };
 		DA1969212C3F6C6800258481 /* HistoryItemAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1969202C3F6C6800258481 /* HistoryItemAction.swift */; };
 		DA3BCB922C3EEC3C00B01BC1 /* History.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3BCB912C3EEC3C00B01BC1 /* History.swift */; };
-		DA3BCB942C3EECBB00B01BC1 /* HistoryItemDecorator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3BCB932C3EECBB00B01BC1 /* HistoryItemDecorator.swift */; };
 		DA3EAE0C2AE30F7500F39108 /* NSApplication+Windows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3EAE0B2AE30F7500F39108 /* NSApplication+Windows.swift */; };
 		DA49EE7528B59468002752E0 /* NSRect+Centered.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA49EE7428B59468002752E0 /* NSRect+Centered.swift */; };
 		DA49EE7928B594DC002752E0 /* NSRunningApplication+WindowFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA49EE7828B594DC002752E0 /* NSRunningApplication+WindowFrame.swift */; };
@@ -84,7 +83,6 @@
 
 
 		DA3BCB912C3EEC3C00B01BC1 /* History.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = History.swift; sourceTree = "<group>"; };
-		DA3BCB932C3EECBB00B01BC1 /* HistoryItemDecorator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryItemDecorator.swift; sourceTree = "<group>"; };
 		DA3EAE0B2AE30F7500F39108 /* NSApplication+Windows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSApplication+Windows.swift"; sourceTree = "<group>"; };
 
 		DA49EE7428B59468002752E0 /* NSRect+Centered.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSRect+Centered.swift"; sourceTree = "<group>"; };
@@ -179,7 +177,6 @@
 			children = (
 				DAA072D62C41C574006DDFD2 /* AppState.swift */,
 				DA3BCB912C3EEC3C00B01BC1 /* History.swift */,
-				DA3BCB932C3EECBB00B01BC1 /* HistoryItemDecorator.swift */,
 				DAE8F5D32C43262B00851CA9 /* Popup.swift */,
 			);
 			path = Observables;
@@ -343,7 +340,6 @@
 				2FA51A0E2F31001000AA0001 /* AppPreferences.swift in Sources */,
 				DAEE38471E3DBEB100DD2966 /* AppDelegate.swift in Sources */,
 				2FA51A102F31001100AA0001 /* HotKeyManager.swift in Sources */,
-				DA3BCB942C3EECBB00B01BC1 /* HistoryItemDecorator.swift in Sources */,
 				DA7A753E26A52F0F00DC16EF /* NSImage+Names.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

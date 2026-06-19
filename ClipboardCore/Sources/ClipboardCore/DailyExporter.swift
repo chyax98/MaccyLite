@@ -128,9 +128,16 @@ public final class DailyExporter: @unchecked Sendable {
       ""
     ], to: handle)
 
-    var offset = 0
+    var cursorCopiedAt: Date?
+    var cursorID: String?
     while true {
-      let items = try database.items(from: start, to: end, limit: batchSize, offset: offset)
+      let items = try database.items(
+        from: start,
+        to: end,
+        afterCopiedAt: cursorCopiedAt,
+        afterID: cursorID,
+        limit: batchSize
+      )
       guard !items.isEmpty else {
         break
       }
@@ -139,7 +146,8 @@ public final class DailyExporter: @unchecked Sendable {
         try write(item: item, to: handle)
       }
 
-      offset += items.count
+      cursorCopiedAt = items.last?.copiedAt
+      cursorID = items.last?.id
     }
   }
 

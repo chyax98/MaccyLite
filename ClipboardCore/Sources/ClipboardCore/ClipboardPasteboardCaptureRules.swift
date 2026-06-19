@@ -40,6 +40,10 @@ public struct ClipboardPasteboardCaptureRules: Sendable, Equatable {
       selected.subtract([Self.microsoftLinkSource, Self.microsoftObjectLink, Self.pdf])
     }
 
+    if selected.contains(ClipboardContentType.html), selected.contains(ClipboardContentType.rtf) {
+      selected.remove(ClipboardContentType.rtf)
+    }
+
     return selected
   }
 

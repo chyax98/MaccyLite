@@ -84,7 +84,7 @@ func databaseMergesDuplicateClipboardItems() throws {
 }
 
 @Test
-func databaseFindsShortChineseQueryOutsideRecentSearchScope() throws {
+func databaseLimitsShortChineseQueryToRecentSearchScope() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
 
@@ -126,7 +126,8 @@ func databaseFindsShortChineseQueryOutsideRecentSearchScope() throws {
     ))
   }
 
-  #expect(try database.search("健康", limit: 10).map(\.id) == ["old-target"])
+  #expect(try database.search("健康", limit: 10).isEmpty)
+  #expect(try database.search("健康计划", limit: 10).map(\.id) == ["old-target"])
 }
 
 @Test
@@ -345,6 +346,43 @@ func dailyExporterWritesMarkdownAndRemovesOrphanAssets() throws {
   #expect(removed == [orphan.relativePath])
   #expect(assetStore.exists(asset.relativePath))
   #expect(!assetStore.exists(orphan.relativePath))
+}
+
+@Test
+func dailyExporterKeysetPaginationDoesNotDropItemsWithSameTimestamp() throws {
+  let directory = try temporaryDirectory()
+  let assetStore = AssetStore(root: directory.appending(path: "Assets"))
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+  let copiedAt = Date(timeIntervalSince1970: 1_719_187_200)
+
+  for index in 0..<300 {
+    let text = "entry-\(String(format: "%03d", index))"
+    try database.insert(ClipboardItemDraft(
+      id: text,
+      copiedAt: copiedAt,
+      sourceApp: nil,
+      primaryType: ClipboardContentType.plainText,
+      displayText: text,
+      searchText: text,
+      contents: []
+    ))
+  }
+
+  let exporter = DailyExporter(
+    database: database,
+    assetStore: assetStore,
+    exportDirectory: directory.appending(path: "Exports"),
+    calendar: Calendar(identifier: .gregorian)
+  )
+
+  let result = try exporter.export(day: copiedAt)
+  let markdown = try String(contentsOf: result.url, encoding: .utf8)
+
+  #expect(result.itemCount == 300)
+  for index in 0..<300 {
+    let text = "entry-\(String(format: "%03d", index))"
+    #expect(markdown.contains(text))
+  }
 }
 
 @Test
@@ -1271,6 +1309,26 @@ func pasteboardCaptureRulesAllowOnlySupportedEnabledTypes() {
   )
 
   #expect(selected == [ClipboardContentType.plainText])
+}
+
+@Test
+func pasteboardCaptureRulesPreferHTMLOverRTFWhenBothRichTypesExist() {
+  let rules = ClipboardPasteboardCaptureRules()
+
+  let selected = rules.selectedItemTypes(
+    from: [
+      ClipboardContentType.plainText,
+      ClipboardContentType.html,
+      ClipboardContentType.rtf
+    ],
+    hasEmptyPlainText: false,
+    hasRichTextPayload: true
+  )
+
+  #expect(selected == [
+    ClipboardContentType.plainText,
+    ClipboardContentType.html
+  ])
 }
 
 @Test

@@ -169,10 +169,10 @@ class Clipboard: @unchecked Sendable {
     // - https://github.com/p0deje/Maccy/issues/472
     var coreContents = [ClipboardRawContent]()
     let copiedAt = Date.now
+    let regexps = ignoreRegexps()
     pasteboard.pasteboardItems?.forEach({ item in
       let itemTypes = Set(item.types)
       let hasRichTextPayload = hasRichTextPayload(itemTypes)
-      let regexps = ignoreRegexps()
       let needsPlainText = !regexps.isEmpty || (itemTypes.contains(.string) && !hasRichTextPayload)
       let plainText = needsPlainText ? item.string(forType: .string) : nil
 
@@ -267,11 +267,21 @@ class Clipboard: @unchecked Sendable {
   }
 
   private func orderedTypes(_ types: Set<String>) -> [String] {
+    let normalizedTypes = preferredRichTypes(from: types)
     let known = readPriority
       .map(\.rawValue)
-      .filter(types.contains)
+      .filter(normalizedTypes.contains)
     let knownSet = Set(known)
-    return known + types.subtracting(knownSet).sorted()
+    return known + normalizedTypes.subtracting(knownSet).sorted()
+  }
+
+  private func preferredRichTypes(from types: Set<String>) -> Set<String> {
+    guard types.contains(NSPasteboard.PasteboardType.html.rawValue),
+          types.contains(NSPasteboard.PasteboardType.rtf.rawValue) else {
+      return types
+    }
+
+    return types.subtracting([NSPasteboard.PasteboardType.rtf.rawValue])
   }
 
   private func isEmptyString(_ string: String?) -> Bool {

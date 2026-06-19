@@ -107,7 +107,7 @@ public struct ClipboardCapture: Sendable {
     case ClipboardContentType.fileURL:
       return String(data: data, encoding: .utf8) ?? ""
     case ClipboardContentType.html:
-      let html = utf8PrefixString(data, limit: policy.searchTextLimit)
+      let html = utf8PrefixString(data, limit: min(policy.searchTextLimit, policy.richTextSearchTextLimit))
       return stripHTML(html)
     case ClipboardContentType.rtf:
       return ""

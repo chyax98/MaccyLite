@@ -1,4 +1,5 @@
 import AppKit
+import ClipboardCore
 
 final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
   private let searchField = NSSearchField()
@@ -6,9 +7,12 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private let scrollView = NSScrollView()
   private let footerLabel = NSTextField(labelWithString: "")
   private let statusBarButton: NSStatusBarButton?
-  private var items: [HistoryItemDecorator] = []
+  private var items: [ClipboardListItem] = []
+  private var itemTitles: [String] = []
   private var searchTask: Task<Void, Never>?
   private var debounceTask: Task<Void, Never>?
+  private let reloadQueue = DispatchQueue(label: "com.local.MaccyLite.history-panel.reload", qos: .userInitiated)
+  private var reloadRequestID = 0
   private var lastReloadQuery: String?
   private var lastLoadedRevision = -1
   private var isPresented = false
@@ -154,8 +158,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       return cell
     }()
 
-    let item = items[row]
-    cell.textField?.stringValue = item.title.replacingOccurrences(of: "\n", with: " ").shortened(to: 300)
+    cell.textField?.stringValue = itemTitles.indices.contains(row) ? itemTitles[row] : Self.titleText(for: items[row])
     return cell
   }
 
@@ -222,21 +225,37 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       return
     }
     lastReloadQuery = trimmed
+    reloadRequestID += 1
+    let requestID = reloadRequestID
 
     searchTask = Task {
-      let loaded = await Task.detached(priority: .userInitiated) {
+      let loaded = await withCheckedContinuation { continuation in
+        reloadQueue.async {
+          guard !Task.isCancelled else {
+            continuation.resume(returning: (items: [ClipboardListItem](), titles: [String]()))
+            return
+          }
+
         let listItems = trimmed.isEmpty
           ? ClipboardCoreStore.shared.latest(limit: 200)
           : ClipboardCoreStore.shared.search(trimmed, limit: 200)
 
-        return listItems.map(HistoryItemDecorator.init)
-      }.value
+          continuation.resume(returning: (items: listItems, titles: listItems.map(Self.titleText(for:))))
+        }
+      }
 
       guard !Task.isCancelled else { return }
       await MainActor.run {
-        self.items = loaded
+        guard requestID == self.reloadRequestID,
+              trimmed == self.lastReloadQuery,
+              revision == ClipboardCoreStore.shared.revision else {
+          return
+        }
+
+        self.items = loaded.items
+        self.itemTitles = loaded.titles
         self.tableView.reloadData()
-        if !loaded.isEmpty {
+        if !loaded.items.isEmpty {
           self.tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
         }
         self.lastLoadedRevision = revision
@@ -257,11 +276,18 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     }
   }
 
-  private func selectedItem() -> HistoryItemDecorator? {
-    guard items.indices.contains(tableView.selectedRow) else {
+  private func selectedItem() -> ClipboardListItem? {
+    guard let row = selectedRow() else {
       return items.first
     }
-    return items[tableView.selectedRow]
+    return items[row]
+  }
+
+  private func selectedRow() -> Int? {
+    guard items.indices.contains(tableView.selectedRow) else {
+      return nil
+    }
+    return tableView.selectedRow
   }
 
   private func selectCurrentItem() {
@@ -273,7 +299,12 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     guard let item = selectedItem() else { return }
     let selectedRow = tableView.selectedRow
     History.shared.delete(item)
-    items.removeAll { $0.itemID == item.itemID }
+    if let row = items.firstIndex(where: { $0.id == item.id }) {
+      items.remove(at: row)
+      if itemTitles.indices.contains(row) {
+        itemTitles.remove(at: row)
+      }
+    }
     tableView.reloadData()
     if !items.isEmpty {
       tableView.selectRowIndexes(IndexSet(integer: min(max(selectedRow, 0), items.count - 1)), byExtendingSelection: false)
@@ -282,11 +313,15 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   }
 
   private func togglePinCurrentItem() {
-    guard let item = selectedItem() else { return }
-    item.togglePin()
+    guard let row = selectedRow() else { return }
+    items[row].isPinned.toggle()
+    let item = items[row]
+    Task.detached(priority: .utility) {
+      ClipboardCoreStore.shared.setPinned(item.isPinned, itemID: item.id)
+    }
     sortLocalItems()
     tableView.reloadData()
-    if let row = items.firstIndex(where: { $0.itemID == item.itemID }) {
+    if let row = items.firstIndex(where: { $0.id == item.id }) {
       tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
       tableView.scrollRowToVisible(row)
     }
@@ -313,10 +348,15 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private func sortLocalItems() {
     items.sort { lhs, rhs in
       if lhs.isPinned != rhs.isPinned {
-        return AppPreferences.pinTo == .bottom ? lhs.isUnpinned && rhs.isPinned : lhs.isPinned && rhs.isUnpinned
+        return AppPreferences.pinTo == .bottom ? !lhs.isPinned && rhs.isPinned : lhs.isPinned && !rhs.isPinned
       }
       return lhs.copiedAt > rhs.copiedAt
     }
+    itemTitles = items.map(Self.titleText(for:))
+  }
+
+  private static func titleText(for item: ClipboardListItem) -> String {
+    item.displayText.replacingOccurrences(of: "\n", with: " ").shortened(to: 300)
   }
 
   @objc
