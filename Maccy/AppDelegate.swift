@@ -9,7 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     statusItem.behavior = .removalAllowed
     statusItem.button?.action = #selector(performStatusItemClick)
-    statusItem.button?.image = AppPreferences.menuIcon.image
+    statusItem.button?.image = NSImage(named: .maccyStatusBar)
     statusItem.button?.imagePosition = .imageLeft
     statusItem.button?.target = self
     return statusItem

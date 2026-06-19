@@ -120,16 +120,6 @@ enum AppPreferences {
     set { set(Array(newValue), "ignoredPasteboardTypes") }
   }
 
-  static var imageMaxHeight: Int {
-    get { integer("imageMaxHeight", 40) }
-    set { set(newValue, "imageMaxHeight") }
-  }
-
-  static var menuIcon: MenuIcon {
-    get { MenuIcon(rawValue: string("menuIcon", MenuIcon.maccy.rawValue)) ?? .maccy }
-    set { set(newValue.rawValue, "menuIcon") }
-  }
-
   static var pasteByDefault: Bool {
     get { bool("pasteByDefault", false) }
     set { set(newValue, "pasteByDefault") }

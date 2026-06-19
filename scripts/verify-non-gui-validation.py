@@ -329,6 +329,11 @@ reject_text(
   ".png",
   ".tiff",
 )
+reject_text(
+  "Maccy/AppPreferences.swift",
+  "menuIcon",
+  "imageMaxHeight",
+)
 require_text(
   "scripts/build-local-app.sh",
   "CODE_SIGNING_ALLOWED=NO",
@@ -449,6 +454,7 @@ for forbidden in [
   "AppIntents",
   "Sauce",
   "KeyboardLayout.swift",
+  "MenuIcon.swift",
   "com.p0deje",
   "org.p0deje",
 ]:
@@ -511,6 +517,9 @@ for forbidden_path in [
   "MaccyUITests",
   "Maccy/History.xcdatamodeld",
   "Maccy/Storage.xcdatamodeld",
+  "Maccy/Assets.xcassets/clipboard.fill.imageset",
+  "Maccy/Assets.xcassets/paperclip.imageset",
+  "Maccy/Assets.xcassets/scissors.imageset",
   "Maccy/Intents",
   "Maccy/Sounds",
   "Maccy/AppStoreReview.swift",
