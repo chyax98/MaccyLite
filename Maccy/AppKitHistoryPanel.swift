@@ -5,7 +5,7 @@ import QuickLookThumbnailing
 
 final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
   private let searchField = NSSearchField()
-  private let tableView = NSTableView()
+  private let tableView = HistoryTableView()
   private let scrollView = NSScrollView()
   private let previewContainer = NSView()
   private let previewStack = NSStackView()
@@ -293,8 +293,9 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     tableView.selectionHighlightStyle = .regular
     tableView.delegate = self
     tableView.dataSource = self
-    tableView.target = self
-    tableView.doubleAction = #selector(doubleClickItem)
+    tableView.onDoubleClickRow = { [weak self] row in
+      self?.pasteItem(at: row)
+    }
 
     let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("content"))
     column.resizingMask = .autoresizingMask
@@ -476,6 +477,14 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private func selectCurrentItem() {
     guard let item = selectedItem() else { return }
     History.shared.select(item)
+  }
+
+  private func pasteItem(at row: Int) {
+    guard items.indices.contains(row) else {
+      return
+    }
+    tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+    History.shared.paste(items[row])
   }
 
   private func deleteCurrentItem() {
@@ -904,8 +913,21 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     var image: NSImage?
   }
 
-  @objc
-  private func doubleClickItem() {
-    History.shared.paste(selectedItem())
+}
+
+private final class HistoryTableView: NSTableView {
+  var onDoubleClickRow: ((Int) -> Void)?
+
+  override func mouseDown(with event: NSEvent) {
+    let point = convert(event.locationInWindow, from: nil)
+    let clickedRow = row(at: point)
+
+    super.mouseDown(with: event)
+
+    guard event.clickCount == 2, clickedRow >= 0 else {
+      return
+    }
+
+    onDoubleClickRow?(clickedRow)
   }
 }
