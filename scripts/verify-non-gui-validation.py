@@ -288,6 +288,11 @@ require_text(
   "codesign --force --deep --sign -",
   "xattr -dr com.apple.quarantine",
   "codesign --verify --deep --strict",
+  "CFBundleName",
+  "CFBundleIdentifier",
+  "com.local.MaccyLite",
+  "LSUIElement",
+  "LSMinimumSystemVersion",
   "dist/local",
 )
 require_text(
