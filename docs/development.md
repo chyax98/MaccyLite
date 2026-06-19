@@ -102,6 +102,12 @@ swift run --package-path ClipboardCore -c release clipboard-benchmark 10000 mixe
 scripts/validate-performance.sh
 ```
 
+维护 CLI smoke 验证：
+
+```sh
+scripts/validate-maintenance.sh
+```
+
 默认数据集较小，用于本地快速回归；完整压测可以覆盖默认参数：
 
 ```sh

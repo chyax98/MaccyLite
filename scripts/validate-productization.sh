@@ -6,6 +6,9 @@ cd "$(dirname "$0")/.."
 echo "== Non-GUI validation =="
 scripts/validate-non-gui.sh
 
+echo "== Maintenance CLI validation =="
+scripts/validate-maintenance.sh
+
 if [[ "${FULL_PERFORMANCE:-0}" == "1" ]]; then
   export TEXT_ITEMS="${TEXT_ITEMS:-100000}"
   export MIXED_ITEMS="${MIXED_ITEMS:-10000}"

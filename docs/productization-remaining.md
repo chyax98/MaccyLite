@@ -16,6 +16,9 @@
 - `scripts/validate-performance.sh`
   - 对 latest/search/thumbnail 查询设置 p95 阈值。
   - mixed benchmark 必须产生 asset 文件和 pending thumbnail jobs。
+- `scripts/validate-maintenance.sh`
+  - 覆盖 `clipboard-maintenance` 的 health、reindex、search、export、assets、cleanup-assets smoke path。
+  - 验证空库可初始化、空日报可生成、资产检查和清理命令可执行。
 - `xcodebuild ... CODE_SIGNING_ALLOWED=NO build`
   - 只验证 App 编译，不启动 App。
 

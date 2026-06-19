@@ -26,6 +26,7 @@ scripts/validate-productization.sh
 
 ```sh
 scripts/validate-non-gui.sh
+scripts/validate-maintenance.sh
 scripts/validate-performance.sh
 ```
 

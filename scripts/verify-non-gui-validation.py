@@ -119,6 +119,7 @@ require_text(
   "docs/manual-acceptance.md",
   "scripts/validate-productization.sh",
   "scripts/validate-non-gui.sh",
+  "scripts/validate-maintenance.sh",
   "scripts/validate-performance.sh",
   "FULL_PERFORMANCE=1",
   "不迁移旧历史和设置",
@@ -128,6 +129,7 @@ require_text(
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/validate-non-gui.sh",
+  "scripts/validate-maintenance.sh",
 )
 require_text(
   "docs/manual-acceptance.md",
@@ -140,6 +142,7 @@ require_text(
 )
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
+require_executable("scripts/validate-maintenance.sh")
 require_executable("scripts/validate-performance.sh")
 verify_static_localization_references()
 
