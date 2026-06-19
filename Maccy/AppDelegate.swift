@@ -25,6 +25,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationWillFinishLaunching(_ notification: Notification) { // swiftlint:disable:this function_body_length
     AppPreferences.migratePerformanceDefaults()
+    installMainMenu()
 
     // Bridge FloatingPanel via AppDelegate.
     AppState.shared.appDelegate = self
@@ -213,5 +214,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     statusItem.menu = menu
     statusItem.button?.performClick(nil)
     statusItem.menu = nil
+  }
+
+  private func installMainMenu() {
+    let mainMenu = NSMenu()
+    let appMenuItem = NSMenuItem()
+    let appMenu = NSMenu()
+
+    let settingsItem = NSMenuItem(
+      title: "设置…",
+      action: #selector(openPreferences),
+      keyEquivalent: ","
+    )
+    settingsItem.target = self
+    appMenu.addItem(settingsItem)
+    appMenu.addItem(.separator())
+
+    let quitItem = NSMenuItem(
+      title: "退出 MaccyLite",
+      action: #selector(quit),
+      keyEquivalent: "q"
+    )
+    quitItem.target = self
+    appMenu.addItem(quitItem)
+
+    appMenuItem.submenu = appMenu
+    mainMenu.addItem(appMenuItem)
+    NSApp.mainMenu = mainMenu
   }
 }
