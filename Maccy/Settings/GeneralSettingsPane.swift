@@ -5,17 +5,9 @@ import LaunchAtLogin
 import Settings
 
 struct GeneralSettingsPane: View {
-  private let notificationsURL = URL(
-    string: "x-apple.systempreferences:com.apple.preference.notifications?id=\(Bundle.main.bundleIdentifier ?? "")"
-  )
-
-  @Default(.searchMode) private var searchMode
-
   @State private var copyModifier = HistoryItemAction.copy.modifierFlags.description
   @State private var pasteModifier = HistoryItemAction.paste.modifierFlags.description
   @State private var pasteWithoutFormatting = HistoryItemAction.pasteWithoutFormatting.modifierFlags.description
-
-  @State private var updater = SoftwareUpdater()
 
   var body: some View {
     Settings.Container(contentWidth: 450) {
@@ -23,13 +15,6 @@ struct GeneralSettingsPane: View {
         LaunchAtLogin.Toggle {
           Text("LaunchAtLogin", tableName: "GeneralSettings")
         }
-        Toggle(isOn: $updater.automaticallyChecksForUpdates) {
-          Text("CheckForUpdates", tableName: "GeneralSettings")
-        }
-        Button(
-          action: { updater.checkForUpdates() },
-          label: { Text("CheckNow", tableName: "GeneralSettings") }
-        )
       }
 
       Settings.Section(label: { Text("Open", tableName: "GeneralSettings") }) {
@@ -64,19 +49,6 @@ struct GeneralSettingsPane: View {
 
       Settings.Section(
         bottomDivider: true,
-        label: { Text("Search", tableName: "GeneralSettings") }
-      ) {
-        Picker("", selection: $searchMode) {
-          ForEach(Search.Mode.allCases) { mode in
-            Text(mode.description)
-          }
-        }
-        .labelsHidden()
-        .frame(width: 180, alignment: .leading)
-      }
-
-      Settings.Section(
-        bottomDivider: true,
         label: { Text("Behavior", tableName: "GeneralSettings") }
       ) {
         Defaults.Toggle(key: .pasteByDefault) {
@@ -100,13 +72,6 @@ struct GeneralSettingsPane: View {
         .controlSize(.small)
       }
 
-      Settings.Section(title: "") {
-        if let notificationsURL = notificationsURL {
-          Link(destination: notificationsURL, label: {
-            Text("NotificationsAndSounds", tableName: "GeneralSettings")
-          })
-        }
-      }
     }
   }
 

@@ -1,6 +1,5 @@
 import Defaults
 import KeyboardShortcuts
-import Sparkle
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -24,21 +23,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private var statusItemVisibilityObserver: NSKeyValueObservation?
 
   func applicationWillFinishLaunching(_ notification: Notification) { // swiftlint:disable:this function_body_length
-    #if DEBUG
-    if CommandLine.arguments.contains("enable-testing") {
-      SPUUpdater(hostBundle: Bundle.main,
-                 applicationBundle: Bundle.main,
-                 userDriver: SPUStandardUserDriver(hostBundle: Bundle.main, delegate: nil),
-                 delegate: nil)
-      .automaticallyChecksForUpdates = false
-    }
-    #endif
-
     // Bridge FloatingPanel via AppDelegate.
     AppState.shared.appDelegate = self
 
-    Clipboard.shared.onNewCopy { History.shared.add($0) }
+    Clipboard.shared.onNewCoreCopy { History.shared.add($0) }
     Clipboard.shared.start()
+    DailyExportScheduler.shared.start()
+    DispatchQueue.global(qos: .utility).async {
+      _ = ClipboardCoreStore.shared.generatePendingThumbnails(limit: 100)
+    }
 
     Task {
       for await _ in Defaults.updates(.clipboardCheckInterval, initial: false) {
@@ -89,17 +82,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ aNotification: Notification) {
-    migrateUserDefaults()
     disableUnusedGlobalHotkeys()
 
     panel = FloatingPanel(
       contentRect: NSRect(origin: .zero, size: Defaults[.windowSize]),
-      identifier: Bundle.main.bundleIdentifier ?? "org.p0deje.Maccy",
+      identifier: Bundle.main.bundleIdentifier ?? "com.local.MaccyLite",
       statusBarButton: statusItem.button,
       onClose: { AppState.shared.popup.reset() }
     ) {
       ContentView()
     }
+
   }
 
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -108,34 +101,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationWillTerminate(_ notification: Notification) {
+    DailyExportScheduler.shared.stop()
+
     if Defaults[.clearOnQuit] {
       AppState.shared.history.clear()
     }
-  }
-
-  private func migrateUserDefaults() {
-    if Defaults[.migrations]["2024-07-01-version-2"] != true {
-      // Start 2.x from scratch.
-      Defaults.reset(.migrations)
-
-      // Inverse hide* configuration keys.
-      Defaults[.showFooter] = !UserDefaults.standard.bool(forKey: "hideFooter")
-      Defaults[.showSearch] = !UserDefaults.standard.bool(forKey: "hideSearch")
-      Defaults[.showTitle] = !UserDefaults.standard.bool(forKey: "hideTitle")
-      UserDefaults.standard.removeObject(forKey: "hideFooter")
-      UserDefaults.standard.removeObject(forKey: "hideSearch")
-      UserDefaults.standard.removeObject(forKey: "hideTitle")
-
-      Defaults[.migrations]["2024-07-01-version-2"] = true
-    }
-
-    // The following defaults are not used in Maccy 2.x
-    // and should be removed in 3.x.
-    // - LaunchAtLogin__hasMigrated
-    // - avoidTakingFocus
-    // - saratovSeparator
-    // - maxMenuItemLength
-    // - maxMenuItems
   }
 
   @objc
@@ -162,12 +132,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       AppState.shared.menuIconText
     } onChange: {
       DispatchQueue.main.async {
-        if Defaults[.showRecentCopyInMenuBar] {
-          self.statusItem.button?.title = AppState.shared.menuIconText
-        }
-        self.synchronizeMenuIconText()
+        AppState.shared.appDelegate?.refreshMenuIconTextObservation()
       }
     }
+  }
+
+  private func refreshMenuIconTextObservation() {
+    if Defaults[.showRecentCopyInMenuBar] {
+      statusItem.button?.title = AppState.shared.menuIconText
+    }
+    synchronizeMenuIconText()
   }
 
   private func disableUnusedGlobalHotkeys() {

@@ -1,8 +1,8 @@
 import AppKit.NSWorkspace
+import ClipboardCore
 import Defaults
 import Foundation
 import Observation
-import Sauce
 
 @Observable
 class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
@@ -14,110 +14,175 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   static var thumbnailImageSize: NSSize { NSSize(width: 340, height: Defaults[.imageMaxHeight]) }
 
   let id = UUID()
-
-  var title: String = ""
+  let itemID: String
+  var title: String
   var attributedTitle: AttributedString?
-
   var isVisible: Bool = true
   var selectionIndex: Int = -1
+  var shortcuts: [KeyShortcut]
+  private var listItem: ClipboardListItem
+  private var fullItem: ClipboardStoredItem?
+
+  var applicationImage: ApplicationImage
+  var thumbnailImage: NSImage?
+  var previewImage: NSImage?
+
   var isSelected: Bool {
-    return selectionIndex != -1
+    selectionIndex != -1
   }
-  var shortcuts: [KeyShortcut] = []
+
+  var isPinned: Bool {
+    listItem.isPinned
+  }
+
+  var isUnpinned: Bool {
+    !listItem.isPinned
+  }
+
+  var hasImage: Bool {
+    listItem.hasImage
+  }
 
   var application: String? {
-    if item.universalClipboard {
-      return "iCloud"
-    }
-
-    guard let bundle = item.application,
-      let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle)
-    else {
-      return nil
+    guard let bundle = listItem.sourceApp,
+          let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) else {
+      return listItem.sourceApp
     }
 
     return url.deletingPathExtension().lastPathComponent
   }
 
-  var hasImage: Bool { item.image != nil }
+  var text: String {
+    listItem.displayText.shortened(to: 10_000)
+  }
 
-  var previewImageGenerationTask: Task<(), Error>?
-  var thumbnailImageGenerationTask: Task<(), Error>?
-  var previewImage: NSImage?
-  var thumbnailImage: NSImage?
-  var applicationImage: ApplicationImage
+  var copiedAt: Date {
+    listItem.copiedAt
+  }
 
-  // 10k characters seems to be more than enough on large displays
-  var text: String { item.previewableText.shortened(to: 10_000) }
+  var copyCount: Int {
+    listItem.copyCount
+  }
 
-  var isPinned: Bool { item.pin != nil }
-  var isUnpinned: Bool { item.pin == nil }
+  private static let imageTypes: Set<NSPasteboard.PasteboardType> = [
+    .tiff,
+    .png,
+    .jpeg,
+    .heic
+  ]
+
+  init(_ item: ClipboardListItem, shortcuts: [KeyShortcut] = []) {
+    self.listItem = item
+    self.itemID = item.id
+    self.title = item.displayText
+    self.shortcuts = shortcuts
+    self.applicationImage = ApplicationImageCache.shared.getImage(bundleIdentifier: item.sourceApp)
+  }
+
+  convenience init(_ item: ClipboardStoredItem, shortcuts: [KeyShortcut] = []) {
+    self.init(
+      ClipboardListItem(
+        id: item.id,
+        copiedAt: item.copiedAt,
+        sourceApp: item.sourceApp,
+        primaryType: item.primaryType,
+        displayText: item.displayText,
+        isPinned: item.isPinned,
+        copyCount: item.copyCount,
+        hasImage: Self.imageContent(in: item) != nil
+      ),
+      shortcuts: shortcuts
+    )
+    self.fullItem = item
+  }
 
   func hash(into hasher: inout Hasher) {
-    // We need to hash title and attributedTitle, so SwiftUI knows it needs to update the view if they chage
-    hasher.combine(id)
+    hasher.combine(itemID)
     hasher.combine(title)
     hasher.combine(attributedTitle)
   }
 
-  private(set) var item: HistoryItem
-
-  init(_ item: HistoryItem, shortcuts: [KeyShortcut] = []) {
-    self.item = item
-    self.shortcuts = shortcuts
-    self.title = item.title
-    self.applicationImage = ApplicationImageCache.shared.getImage(item: item)
-
-    synchronizeItemPin()
-    synchronizeItemTitle()
+  func update(_ item: ClipboardStoredItem) {
+    fullItem = item
+    listItem = ClipboardListItem(
+      id: item.id,
+      copiedAt: item.copiedAt,
+      sourceApp: item.sourceApp,
+      primaryType: item.primaryType,
+      displayText: item.displayText,
+      isPinned: item.isPinned,
+      copyCount: item.copyCount,
+      hasImage: Self.imageContent(in: item) != nil
+    )
+    title = item.displayText
+    applicationImage = ApplicationImageCache.shared.getImage(bundleIdentifier: item.sourceApp)
   }
 
   @MainActor
   func ensureThumbnailImage() {
-    guard item.image != nil else {
+    guard thumbnailImage == nil, hasImage else {
       return
     }
-    guard thumbnailImage == nil else {
-      return
-    }
-    guard thumbnailImageGenerationTask == nil else {
-      return
-    }
-    thumbnailImageGenerationTask = Task { [weak self] in
-      self?.generateThumbnailImage()
+
+    let itemID = itemID
+    Task {
+      let result = await Task.detached(priority: .utility) {
+      let storedItem = ClipboardCoreStore.shared.item(id: itemID)
+      guard let storedItem,
+            let imageData = Self.thumbnailData(for: storedItem),
+            let image = NSImage(data: imageData)?.resized(to: Self.thumbnailImageSize) else {
+        return nil as (ClipboardStoredItem, NSImage)?
+      }
+
+        return (storedItem, image)
+      }.value
+
+      guard let result, self.itemID == itemID else {
+        return
+      }
+
+      update(result.0)
+      thumbnailImage = result.1
     }
   }
 
   @MainActor
   func ensurePreviewImage() {
-    guard item.image != nil else {
-      return
-    }
-    guard previewImage == nil else {
-      return
-    }
-    guard previewImageGenerationTask == nil else {
-      return
-    }
-    previewImageGenerationTask = Task { [weak self] in
-      self?.generatePreviewImage()
+    Task {
+      _ = await asyncGetPreviewImage()
     }
   }
 
   @MainActor
   func asyncGetPreviewImage() async -> NSImage? {
-    if let image = previewImage {
-      return image
+    if let previewImage {
+      return previewImage
     }
-    ensurePreviewImage()
-    _ = await previewImageGenerationTask?.result
-    return previewImage
+
+    let itemID = itemID
+    let result = await Task.detached(priority: .utility) {
+      let storedItem = ClipboardCoreStore.shared.item(id: itemID)
+      guard let storedItem,
+            let imageData = Self.previewData(for: storedItem),
+            let image = NSImage(data: imageData)?.resized(to: Self.previewImageSize) else {
+        return nil as (ClipboardStoredItem, NSImage)?
+      }
+
+      return (storedItem, image)
+    }.value
+
+    guard let result else {
+      return nil
+    }
+
+    update(result.0)
+    previewImage = result.1
+    thumbnailImage = thumbnailImage ?? result.1.resized(to: Self.thumbnailImageSize)
+    return result.1
   }
 
   @MainActor
   func cleanupImages() {
-    thumbnailImageGenerationTask?.cancel()
-    previewImageGenerationTask?.cancel()
     thumbnailImage?.recache()
     previewImage?.recache()
     thumbnailImage = nil
@@ -125,85 +190,81 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   }
 
   @MainActor
-  private func generateThumbnailImage() {
-    guard let image = item.image else {
-      return
-    }
-    thumbnailImage = image.resized(to: HistoryItemDecorator.thumbnailImageSize)
-  }
-
-  @MainActor
-  private func generatePreviewImage() {
-    guard let image = item.image else {
-      return
-    }
-    previewImage = image.resized(to: HistoryItemDecorator.previewImageSize)
-  }
-
-  @MainActor
   func sizeImages() {
-    generatePreviewImage()
-    generateThumbnailImage()
+    thumbnailImage = thumbnailImage?.resized(to: Self.thumbnailImageSize)
+    previewImage = previewImage?.resized(to: Self.previewImageSize)
   }
 
-  func highlight(_ query: String, _ ranges: [Range<String.Index>]) {
-    guard !query.isEmpty, !title.isEmpty else {
+  func highlight(_ query: String) {
+    guard !query.isEmpty, !title.isEmpty,
+          let range = title.range(of: query, options: .caseInsensitive) else {
       attributedTitle = nil
       return
     }
 
     var attributedString = AttributedString(title.shortened(to: 500))
-    for range in ranges {
-      if let lowerBound = AttributedString.Index(range.lowerBound, within: attributedString),
-         let upperBound = AttributedString.Index(range.upperBound, within: attributedString) {
-        switch Defaults[.highlightMatch] {
-        case .bold:
-          attributedString[lowerBound..<upperBound].font = .bold(.body)()
-        case .italic:
-          attributedString[lowerBound..<upperBound].font = .italic(.body)()
-        case .underline:
-          attributedString[lowerBound..<upperBound].underlineStyle = .single
-        default:
-          attributedString[lowerBound..<upperBound].backgroundColor = .findHighlightColor
-          attributedString[lowerBound..<upperBound].foregroundColor = .black
-        }
-      }
+    if let lowerBound = AttributedString.Index(range.lowerBound, within: attributedString),
+       let upperBound = AttributedString.Index(range.upperBound, within: attributedString) {
+      attributedString[lowerBound..<upperBound].backgroundColor = .findHighlightColor
+      attributedString[lowerBound..<upperBound].foregroundColor = .black
     }
-
     attributedTitle = attributedString
   }
 
   @MainActor
   func togglePin() {
-    if item.pin != nil {
-      item.pin = nil
-    } else {
-      let pin = HistoryItem.randomAvailablePin
-      item.pin = pin
+    listItem.isPinned.toggle()
+    let isPinned = listItem.isPinned
+    if var fullItem {
+      fullItem.isPinned = isPinned
+      self.fullItem = fullItem
+    }
+    let itemID = itemID
+    Task.detached(priority: .utility) {
+      ClipboardCoreStore.shared.setPinned(isPinned, itemID: itemID)
     }
   }
 
-  private func synchronizeItemPin() {
-    _ = withObservationTracking {
-      item.pin
-    } onChange: {
-      DispatchQueue.main.async {
-        if let pin = self.item.pin {
-          self.shortcuts = KeyShortcut.create(character: pin)
-        }
-        self.synchronizeItemPin()
-      }
+  private static func thumbnailData(for item: ClipboardStoredItem) -> Data? {
+    guard let content = imageContent(in: item) else {
+      return nil
     }
+
+    if let thumbnailPath = content.thumbnailPath,
+       let data = ClipboardCoreStore.shared.data(assetPath: thumbnailPath) {
+      return data
+    }
+
+    guard let assetPath = content.assetPath,
+          let data = ClipboardCoreStore.shared.data(assetPath: assetPath) else {
+      return content.inlineData
+    }
+
+    return ImageThumbnailGenerator.pngThumbnail(from: data, maxPixelSize: Int(Self.thumbnailImageSize.width))
   }
 
-  private func synchronizeItemTitle() {
-    _ = withObservationTracking {
-      item.title
-    } onChange: {
-      DispatchQueue.main.async {
-        self.title = self.item.title
-        self.synchronizeItemTitle()
-      }
+  private static func previewData(for item: ClipboardStoredItem) -> Data? {
+    guard let content = imageContent(in: item) else {
+      return nil
+    }
+
+    if let thumbnailPath = content.thumbnailPath,
+       let data = ClipboardCoreStore.shared.data(assetPath: thumbnailPath) {
+      return data
+    }
+
+    guard let assetPath = content.assetPath,
+          let data = ClipboardCoreStore.shared.data(assetPath: assetPath) else {
+      return content.inlineData
+    }
+
+    let maxPixelSize = Int(max(Self.previewImageSize.width, Self.previewImageSize.height))
+    return ImageThumbnailGenerator.pngThumbnail(from: data, maxPixelSize: maxPixelSize)
+  }
+
+  private static func imageContent(in item: ClipboardStoredItem) -> ClipboardStoredContent? {
+    item.contents.first { content in
+      Self.imageTypes.contains(NSPasteboard.PasteboardType(content.pasteboardType))
     }
   }
 }

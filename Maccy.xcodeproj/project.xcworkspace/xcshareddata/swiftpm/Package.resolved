@@ -1,5 +1,5 @@
 {
-  "originHash" : "f942e634855df514d2ad3df28082c064282b9265128929b3ff6924f0bae466c1",
+  "originHash" : "a5bdc337253b1b8bad76cc1a963ab6b3d637bb64c80a21b9bc687de30e9eeb31",
   "pins" : [
     {
       "identity" : "defaults",
@@ -11,12 +11,12 @@
       }
     },
     {
-      "identity" : "fuse-swift",
+      "identity" : "grdb.swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/krisk/fuse-swift",
+      "location" : "https://github.com/groue/GRDB.swift.git",
       "state" : {
-        "revision" : "26ba868691b2d8b7bf2b1322951eb591be70ccca",
-        "version" : "1.4.0"
+        "revision" : "b83108d10f42680d78f23fe4d4d80fc88dab3212",
+        "version" : "7.11.1"
       }
     },
     {
@@ -53,15 +53,6 @@
       "state" : {
         "revision" : "879ea83a7bbc6dbebf62bed8c547f090146372a6",
         "version" : "3.1.1"
-      }
-    },
-    {
-      "identity" : "sparkle",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/sparkle-project/Sparkle",
-      "state" : {
-        "revision" : "0ef1ee0220239b3776f433314515fd849025673f",
-        "version" : "2.6.4"
       }
     },
     {
