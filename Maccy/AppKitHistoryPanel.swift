@@ -120,7 +120,54 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     true
   }
 
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    let modifierFlags = event.modifierFlags
+      .intersection(.deviceIndependentFlagsMask)
+      .subtracting([.capsLock, .numericPad, .function])
+    guard modifierFlags == .command,
+          let key = event.charactersIgnoringModifiers?.lowercased() else {
+      return super.performKeyEquivalent(with: event)
+    }
+
+    switch key {
+    case "a":
+      if routeTextCommand(#selector(NSResponder.selectAll(_:)), allowPreviewText: true) {
+        return true
+      }
+    case "c":
+      if routeTextCommand(#selector(NSText.copy(_:)), allowPreviewText: true) {
+        return true
+      }
+    case "v":
+      if routeTextCommand(#selector(NSText.paste(_:)), allowPreviewText: false) {
+        return true
+      }
+    case "x":
+      if routeTextCommand(#selector(NSText.cut(_:)), allowPreviewText: false) {
+        return true
+      }
+    default:
+      break
+    }
+
+    return super.performKeyEquivalent(with: event)
+  }
+
   override func keyDown(with event: NSEvent) {
+    if isPreviewTextFocused {
+      if event.keyCode == 53 {
+        close()
+      } else {
+        super.keyDown(with: event)
+      }
+      return
+    }
+
+    if isSearchFieldEditing, !shouldHandleSearchFieldKey(event) {
+      super.keyDown(with: event)
+      return
+    }
+
     switch event.keyCode {
     case 36, 76:
       selectCurrentItem()
@@ -137,6 +184,41 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     default:
       super.keyDown(with: event)
     }
+  }
+
+  private var isSearchFieldEditing: Bool {
+    guard let firstResponder else {
+      return false
+    }
+
+    return firstResponder === searchField.currentEditor()
+  }
+
+  private var isPreviewTextFocused: Bool {
+    firstResponder === previewTextView
+  }
+
+  private func shouldHandleSearchFieldKey(_ event: NSEvent) -> Bool {
+    let modifierFlags = event.modifierFlags
+      .intersection(.deviceIndependentFlagsMask)
+      .subtracting([.capsLock, .numericPad, .function])
+    guard modifierFlags.isEmpty else {
+      return false
+    }
+
+    return [36, 53, 76, 125, 126].contains(Int(event.keyCode))
+  }
+
+  private func routeTextCommand(_ action: Selector, allowPreviewText: Bool) -> Bool {
+    if isSearchFieldEditing, let editor = searchField.currentEditor() {
+      return NSApp.sendAction(action, to: editor, from: self)
+    }
+
+    if allowPreviewText, isPreviewTextFocused {
+      return NSApp.sendAction(action, to: previewTextView, from: self)
+    }
+
+    return false
   }
 
   func controlTextDidChange(_ notification: Notification) {
