@@ -37,12 +37,13 @@ private final class PreferencesWindow: NSWindow {
   private let removeFormatting = NSButton(checkboxWithTitle: "默认去除格式", target: nil, action: nil)
   private let dailyExport = NSButton(checkboxWithTitle: "启用每日导出", target: nil, action: nil)
   private let fileCapture = NSButton(checkboxWithTitle: "记录文件 URL", target: nil, action: nil)
+  private let imageCapture = NSButton(checkboxWithTitle: "记录图片", target: nil, action: nil)
   private let textCapture = NSButton(checkboxWithTitle: "记录文本/HTML/RTF", target: nil, action: nil)
   private let historySizeField = NSTextField()
 
   init() {
     super.init(
-      contentRect: NSRect(x: 0, y: 0, width: 460, height: 300),
+      contentRect: NSRect(x: 0, y: 0, width: 460, height: 340),
       styleMask: [.titled, .closable, .miniaturizable],
       backing: .buffered,
       defer: false
@@ -82,7 +83,7 @@ private final class PreferencesWindow: NSWindow {
     }()
     sizeRow.addArrangedSubview(historySizeField)
 
-    [pasteByDefault, removeFormatting, dailyExport, fileCapture, textCapture].forEach {
+    [pasteByDefault, removeFormatting, dailyExport, fileCapture, imageCapture, textCapture].forEach {
       $0.target = self
       $0.action = #selector(saveDefaults)
     }
@@ -99,9 +100,10 @@ private final class PreferencesWindow: NSWindow {
     stack.addArrangedSubview(separator)
     stack.addArrangedSubview(storageTitle)
     stack.addArrangedSubview(textCapture)
+    stack.addArrangedSubview(imageCapture)
     stack.addArrangedSubview(fileCapture)
 
-    let note = NSTextField(labelWithString: "已删除图片捕获、旧预览、多选连续粘贴、复杂外观设置。每日导出时间仍使用默认 00:05。")
+    let note = NSTextField(labelWithString: "图片和文件只在选中时预览，不做 OCR、批量缩略图、多选连续粘贴和复杂外观设置。每日导出时间仍使用默认 00:05。")
     note.textColor = .secondaryLabelColor
     note.lineBreakMode = .byWordWrapping
     note.maximumNumberOfLines = 2
@@ -125,6 +127,7 @@ private final class PreferencesWindow: NSWindow {
 
     let enabled = AppPreferences.enabledPasteboardTypes
     fileCapture.state = enabled.isDisjoint(with: StorageType.files.types) ? .off : .on
+    imageCapture.state = enabled.isDisjoint(with: StorageType.images.types) ? .off : .on
     textCapture.state = enabled.isDisjoint(with: StorageType.text.types) ? .off : .on
   }
 
@@ -141,6 +144,9 @@ private final class PreferencesWindow: NSWindow {
     }
     if textCapture.state == .on {
       enabled.formUnion(StorageType.text.types)
+    }
+    if imageCapture.state == .on {
+      enabled.formUnion(StorageType.images.types)
     }
     AppPreferences.enabledPasteboardTypes = enabled
     DailyExportScheduler.shared.reschedule()

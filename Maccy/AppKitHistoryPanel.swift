@@ -5,14 +5,19 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private let searchField = NSSearchField()
   private let tableView = NSTableView()
   private let scrollView = NSScrollView()
+  private let previewContainer = NSView()
+  private let previewImageView = NSImageView()
+  private let previewLabel = NSTextField(labelWithString: "")
   private let footerLabel = NSTextField(labelWithString: "")
   private let statusBarButton: NSStatusBarButton?
   private var items: [ClipboardListItem] = []
   private var itemTitles: [String] = []
   private var searchTask: Task<Void, Never>?
   private var debounceTask: Task<Void, Never>?
+  private var previewTask: Task<Void, Never>?
   private let reloadQueue = DispatchQueue(label: "com.local.MaccyLite.history-panel.reload", qos: .userInitiated)
   private var reloadRequestID = 0
+  private var previewRequestID = 0
   private var lastReloadQuery: String?
   private var lastLoadedRevision = -1
   private var isPresented = false
@@ -84,6 +89,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   override func close() {
     debounceTask?.cancel()
     searchTask?.cancel()
+    previewTask?.cancel()
     super.close()
     isPresented = false
     statusBarButton?.isHighlighted = false
@@ -164,6 +170,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
   func tableViewSelectionDidChange(_ notification: Notification) {
     updateFooter()
+    updatePreview()
   }
 
   private func configureContent() {
@@ -192,12 +199,31 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     scrollView.drawsBackground = false
     scrollView.translatesAutoresizingMaskIntoConstraints = false
 
+    previewContainer.translatesAutoresizingMaskIntoConstraints = false
+    previewContainer.wantsLayer = true
+    previewContainer.layer?.borderColor = NSColor.separatorColor.cgColor
+    previewContainer.layer?.borderWidth = 1
+    previewContainer.layer?.cornerRadius = 6
+
+    previewImageView.imageScaling = .scaleProportionallyUpOrDown
+    previewImageView.translatesAutoresizingMaskIntoConstraints = false
+    previewImageView.isHidden = true
+
+    previewLabel.textColor = .secondaryLabelColor
+    previewLabel.lineBreakMode = .byTruncatingMiddle
+    previewLabel.maximumNumberOfLines = 3
+    previewLabel.translatesAutoresizingMaskIntoConstraints = false
+
+    previewContainer.addSubview(previewImageView)
+    previewContainer.addSubview(previewLabel)
+
     footerLabel.textColor = .secondaryLabelColor
     footerLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
     footerLabel.translatesAutoresizingMaskIntoConstraints = false
 
     container.addSubview(searchField)
     container.addSubview(scrollView)
+    container.addSubview(previewContainer)
     container.addSubview(footerLabel)
     contentView = container
 
@@ -209,7 +235,21 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
       scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
       scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-      scrollView.bottomAnchor.constraint(equalTo: footerLabel.topAnchor, constant: -6),
+      scrollView.bottomAnchor.constraint(equalTo: previewContainer.topAnchor, constant: -8),
+
+      previewContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+      previewContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+      previewContainer.heightAnchor.constraint(equalToConstant: 170),
+      previewContainer.bottomAnchor.constraint(equalTo: footerLabel.topAnchor, constant: -6),
+
+      previewImageView.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 8),
+      previewImageView.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 8),
+      previewImageView.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -8),
+      previewImageView.bottomAnchor.constraint(equalTo: previewContainer.bottomAnchor, constant: -8),
+
+      previewLabel.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 10),
+      previewLabel.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -10),
+      previewLabel.centerYAnchor.constraint(equalTo: previewContainer.centerYAnchor),
 
       footerLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
       footerLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
@@ -260,6 +300,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
         }
         self.lastLoadedRevision = revision
         self.updateFooter()
+        self.updatePreview()
       }
     }
   }
@@ -310,6 +351,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       tableView.selectRowIndexes(IndexSet(integer: min(max(selectedRow, 0), items.count - 1)), byExtendingSelection: false)
     }
     updateFooter()
+    updatePreview()
   }
 
   private func togglePinCurrentItem() {
@@ -326,6 +368,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       tableView.scrollRowToVisible(row)
     }
     updateFooter()
+    updatePreview()
   }
 
   private func moveSelection(by delta: Int) {
@@ -345,6 +388,54 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     }
   }
 
+  private func updatePreview() {
+    previewTask?.cancel()
+    previewRequestID += 1
+    let requestID = previewRequestID
+
+    guard let item = selectedItem() else {
+      showPreviewText("没有可预览内容")
+      return
+    }
+
+    if item.hasImage {
+      showPreviewText("正在载入图片...")
+      previewTask = Task.detached(priority: .utility) {
+        let image = Self.loadPreviewImage(itemID: item.id)
+        await MainActor.run {
+          guard requestID == self.previewRequestID else { return }
+          if let image {
+            self.showPreviewImage(image)
+          } else {
+            self.showPreviewText("图片预览不可用")
+          }
+        }
+      }
+      return
+    }
+
+    if item.primaryType == ClipboardContentType.fileURL {
+      showPreviewText(Self.filePreviewText(item.displayText))
+      return
+    }
+
+    let text = item.displayText.trimmingCharacters(in: .whitespacesAndNewlines)
+    showPreviewText(text.isEmpty ? "没有可预览内容" : text.shortened(to: 1_000))
+  }
+
+  private func showPreviewImage(_ image: NSImage) {
+    previewLabel.isHidden = true
+    previewImageView.image = image
+    previewImageView.isHidden = false
+  }
+
+  private func showPreviewText(_ text: String) {
+    previewImageView.image = nil
+    previewImageView.isHidden = true
+    previewLabel.stringValue = text
+    previewLabel.isHidden = false
+  }
+
   private func sortLocalItems() {
     items.sort { lhs, rhs in
       if lhs.isPinned != rhs.isPinned {
@@ -355,9 +446,40 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     itemTitles = items.map(Self.titleText(for:))
   }
 
-  private static func titleText(for item: ClipboardListItem) -> String {
+  nonisolated private static func titleText(for item: ClipboardListItem) -> String {
     item.displayText.replacingOccurrences(of: "\n", with: " ").shortened(to: 300)
   }
+
+  nonisolated private static func loadPreviewImage(itemID: String) -> NSImage? {
+    guard let item = ClipboardCoreStore.shared.item(id: itemID),
+          let content = item.contents.first(where: { imageTypes.contains($0.pasteboardType) }),
+          let data = ClipboardCoreStore.shared.data(for: content) else {
+      return nil
+    }
+
+    return NSImage(data: data)
+  }
+
+  nonisolated private static func filePreviewText(_ value: String) -> String {
+    let lines = value
+      .split(separator: "\n")
+      .map(String.init)
+      .map { text -> String in
+        guard let url = URL(string: text), url.isFileURL else {
+          return text
+        }
+        return url.path
+      }
+
+    return lines.isEmpty ? "文件" : lines.joined(separator: "\n")
+  }
+
+  nonisolated private static let imageTypes: Set<String> = [
+    ClipboardContentType.png,
+    ClipboardContentType.tiff,
+    ClipboardContentType.jpeg,
+    ClipboardContentType.heic
+  ]
 
   @objc
   private func doubleClickItem() {

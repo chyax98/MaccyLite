@@ -15,6 +15,7 @@ rm -rf "${DERIVED_DATA}" "${OUTPUT_APP}"
 mkdir -p "${OUTPUT_DIR}"
 
 xcodebuild \
+  -jobs 2 \
   -project Maccy.xcodeproj \
   -scheme Maccy \
   -configuration Release \

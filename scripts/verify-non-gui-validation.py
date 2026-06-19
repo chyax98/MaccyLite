@@ -305,7 +305,8 @@ require_text(
 require_text(
   "Maccy/AppPreferences.swift",
   'captureDefaultsVersionKey = "captureDefaultsVersion"',
-  "static let defaultEnabled = StorageType(types: files.types + text.types)",
+  "static let images = StorageType",
+  "static let defaultEnabled = StorageType(types: files.types + images.types + text.types)",
   'defaults.stringArray(forKey: "enabledPasteboardTypes") ?? StorageType.defaultEnabled.types.map',
   "if currentRaw == oldDefault",
 )
@@ -314,20 +315,11 @@ require_text(
   "private let trimBatchSize = 50",
   "private func shouldTrimAfterInsert() -> Bool",
 )
-reject_text(
-  "Maccy/AppPreferences.swift",
-  "StorageType.images",
-  "static let images",
-)
-reject_text(
-  "Maccy/Observables/AppState.swift",
-  "imageCapture",
-  "记录图片",
-)
-reject_text(
-  "Maccy/Clipboard.swift",
-  ".png",
-  ".tiff",
+require_text(
+  "Maccy/AppKitHistoryPanel.swift",
+  "previewImageView",
+  "loadPreviewImage",
+  "filePreviewText",
 )
 reject_text(
   "Maccy/AppPreferences.swift",

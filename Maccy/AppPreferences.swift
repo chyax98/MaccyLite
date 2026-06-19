@@ -3,13 +3,19 @@ import Foundation
 
 struct StorageType {
   static let files = StorageType(types: [NSPasteboard.PasteboardType.fileURL])
+  static let images = StorageType(types: [
+    NSPasteboard.PasteboardType.png,
+    NSPasteboard.PasteboardType.tiff,
+    NSPasteboard.PasteboardType.jpeg,
+    NSPasteboard.PasteboardType.heic
+  ])
   static let text = StorageType(types: [
     NSPasteboard.PasteboardType.html,
     NSPasteboard.PasteboardType.rtf,
     NSPasteboard.PasteboardType.string
   ])
-  static let all = StorageType(types: files.types + text.types)
-  static let defaultEnabled = StorageType(types: files.types + text.types)
+  static let all = StorageType(types: files.types + images.types + text.types)
+  static let defaultEnabled = StorageType(types: files.types + images.types + text.types)
 
   var types: [NSPasteboard.PasteboardType]
 }
@@ -17,14 +23,14 @@ struct StorageType {
 enum AppPreferences {
   private static let defaults = UserDefaults.standard
   private static let captureDefaultsVersionKey = "captureDefaultsVersion"
-  private static let currentCaptureDefaultsVersion = 1
+  private static let currentCaptureDefaultsVersion = 2
 
   static func migratePerformanceDefaults() {
     guard integer(captureDefaultsVersionKey, 0) < currentCaptureDefaultsVersion else {
       return
     }
 
-    let oldDefault = Set(StorageType.all.types.map(\.rawValue))
+    let oldDefault = Set((StorageType.files.types + StorageType.text.types).map(\.rawValue))
     let currentRaw = Set(defaults.stringArray(forKey: "enabledPasteboardTypes") ?? [])
     if currentRaw == oldDefault {
       enabledPasteboardTypes = Set(StorageType.defaultEnabled.types)
