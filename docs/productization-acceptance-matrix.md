@@ -22,6 +22,12 @@
 scripts/validate-productization.sh
 ```
 
+需要留存自动证据时运行：
+
+```sh
+scripts/write-automatic-evidence.sh
+```
+
 它会依次运行：
 
 ```sh

@@ -70,6 +70,14 @@ open /path/to/MaccyLite.app
 scripts/validate-productization.sh
 ```
 
+生成带 commit、时间、性能摘要和完整日志的自动证据文件：
+
+```sh
+scripts/write-automatic-evidence.sh
+```
+
+默认输出到 `dist/validation/automatic-evidence.md`，属于本地生成物，不提交。
+
 完整压测：
 
 ```sh

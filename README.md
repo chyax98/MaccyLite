@@ -44,6 +44,12 @@ MaccyLite 作为新应用处理，不迁移旧 Maccy 历史和设置；发布说
 scripts/validate-productization.sh
 ```
 
+生成自动验证证据：
+
+```sh
+scripts/write-automatic-evidence.sh
+```
+
 完整压测：
 
 ```sh

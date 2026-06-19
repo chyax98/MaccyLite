@@ -9,6 +9,7 @@
 - 机器：
 - Git commit：
 - 构建命令：`scripts/build-local-app.sh`
+- 自动证据：`dist/validation/automatic-evidence.md`
 - App 路径：`dist/local/MaccyLite.app`
 - 是否复制到 `/Applications`：是 / 否
 - 验收人：

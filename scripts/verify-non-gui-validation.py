@@ -134,6 +134,8 @@ for tracked_path in tracked_files:
     or tracked_path.startswith("ClipboardCore/.swiftpm/")
     or tracked_path == "DerivedData"
     or tracked_path.startswith("DerivedData/")
+    or tracked_path == "dist"
+    or tracked_path.startswith("dist/")
     or tracked_path.endswith(".xcuserstate")
     or ".xcuserdata/" in tracked_path
   ):
@@ -145,6 +147,7 @@ require_tracked("Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Packag
 require_text(
   ".gitignore",
   "DerivedData/",
+  "dist/",
   ".build/",
   "ClipboardCore/.build/",
   "ClipboardCore/.swiftpm/",
@@ -163,6 +166,7 @@ require_text(
   "README.md",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
+  "scripts/write-automatic-evidence.sh",
   "scripts/build-local-app.sh",
   "docs/manual-acceptance.md",
   "docs/manual-acceptance-record.md",
@@ -182,6 +186,7 @@ require_text(
   "scripts/validate-non-gui.sh",
   "scripts/validate-maintenance.sh",
   "scripts/validate-performance.sh",
+  "scripts/write-automatic-evidence.sh",
   "FULL_PERFORMANCE=1",
   "不迁移旧历史和设置",
 )
@@ -196,6 +201,8 @@ require_text(
   "docs/development.md",
   "scripts/build-local-app.sh",
   "dist/local/MaccyLite.app",
+  "scripts/write-automatic-evidence.sh",
+  "dist/validation/automatic-evidence.md",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/validate-non-gui.sh",
@@ -206,6 +213,7 @@ require_text(
   "## Build",
   "Git commit",
   "scripts/build-local-app.sh",
+  "dist/validation/automatic-evidence.md",
   "dist/local/MaccyLite.app",
   "## Result Matrix",
   "启动与权限",
@@ -270,7 +278,18 @@ require_text(
   "codesign --verify --deep --strict",
   "dist/local",
 )
+require_text(
+  "scripts/write-automatic-evidence.sh",
+  "scripts/validate-productization.sh",
+  "dist/validation/automatic-evidence.md",
+  "latest_p95_ms",
+  "cjk_search_p95_ms",
+  "token_search_p95_ms",
+  "pending_thumbnail_jobs_p95_ms",
+  "productization validation passed",
+)
 require_executable("scripts/build-local-app.sh")
+require_executable("scripts/write-automatic-evidence.sh")
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
 require_executable("scripts/validate-maintenance.sh")
