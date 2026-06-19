@@ -1109,6 +1109,59 @@ func captureKeepsSearchTextWhenLongUTF8TextIsTruncated() throws {
   #expect(item.contents.first?.assetPath != nil)
 }
 
+@Test
+func pasteboardCaptureRulesIgnorePasteboardWithoutEnabledTypesOrWithIgnoredTypes() {
+  let rules = ClipboardPasteboardCaptureRules(
+    enabledTypes: [ClipboardContentType.plainText],
+    ignoredTypes: ["secret.type"]
+  )
+
+  #expect(rules.shouldIgnorePasteboard(types: ["custom.only"]))
+  #expect(rules.shouldIgnorePasteboard(types: [ClipboardContentType.plainText, "secret.type"]))
+  #expect(!rules.shouldIgnorePasteboard(types: [ClipboardContentType.plainText, "custom.sidecar"]))
+}
+
+@Test
+func pasteboardCaptureRulesSkipEmptyPlainTextUnlessRichTextPayloadExists() {
+  let rules = ClipboardPasteboardCaptureRules()
+
+  #expect(rules.selectedItemTypes(
+    from: [ClipboardContentType.plainText],
+    hasEmptyPlainText: true,
+    hasRichTextPayload: false
+  ).isEmpty)
+
+  #expect(rules.selectedItemTypes(
+    from: [ClipboardContentType.plainText, ClipboardContentType.rtf],
+    hasEmptyPlainText: true,
+    hasRichTextPayload: true
+  ) == [ClipboardContentType.plainText, ClipboardContentType.rtf])
+}
+
+@Test
+func pasteboardCaptureRulesFilterDisabledDynamicAndMicrosoftBookmarkTypes() {
+  let rules = ClipboardPasteboardCaptureRules(
+    enabledTypes: [ClipboardContentType.plainText]
+  )
+
+  let selected = rules.selectedItemTypes(
+    from: [
+      ClipboardContentType.plainText,
+      ClipboardContentType.html,
+      "dyn.ah62d4rv4gu8yc6durvwwaznwmuuha2pxsvw0e55bsmwca7d3sbwu",
+      "com.microsoft.ole.source.example",
+      ClipboardPasteboardCaptureRules.microsoftObjectLink,
+      ClipboardPasteboardCaptureRules.microsoftLinkSource,
+      ClipboardPasteboardCaptureRules.pdf,
+      "custom.sidecar"
+    ],
+    hasEmptyPlainText: false,
+    hasRichTextPayload: false
+  )
+
+  #expect(selected == [ClipboardContentType.plainText, "custom.sidecar"])
+}
+
 private func temporaryDirectory() throws -> URL {
   let directory = FileManager.default.temporaryDirectory
     .appending(path: UUID().uuidString, directoryHint: .isDirectory)

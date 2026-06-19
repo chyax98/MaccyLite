@@ -17,8 +17,6 @@ class Clipboard: @unchecked Sendable {
   private let logger = Logger(label: "com.local.MaccyLite.clipboard")
   private let captureQueue = DispatchQueue(label: "com.local.MaccyLite.clipboard.capture", qos: .utility)
 
-  private let dynamicTypePrefix = "dyn."
-  private let microsoftSourcePrefix = "com.microsoft.ole.source."
   private let supportedTypes: Set<NSPasteboard.PasteboardType> = [
     .fileURL,
     .html,
@@ -34,7 +32,14 @@ class Clipboard: @unchecked Sendable {
   ]
 
   private var enabledTypes: Set<NSPasteboard.PasteboardType> { Defaults[.enabledPasteboardTypes] }
-  private var disabledTypes: Set<NSPasteboard.PasteboardType> { supportedTypes.subtracting(enabledTypes) }
+  private var captureRules: ClipboardPasteboardCaptureRules {
+    ClipboardPasteboardCaptureRules(
+      supportedTypes: Set(supportedTypes.map(\.rawValue)),
+      enabledTypes: Set(enabledTypes.map(\.rawValue)),
+      ignoredTypes: Set(ignoredTypes.map(\.rawValue))
+        .union(Defaults[.ignoredPasteboardTypes])
+    )
+  }
 
   private var sourceApp: NSRunningApplication? { NSWorkspace.shared.frontmostApplication }
 
@@ -149,7 +154,8 @@ class Clipboard: @unchecked Sendable {
     // Reading types on NSPasteboard gives all the available
     // types - even the ones that are not present on the NSPasteboardItem.
     // See https://github.com/p0deje/Maccy/issues/241.
-    if shouldIgnore(Set(pasteboard.types ?? [])) {
+    let captureRules = captureRules
+    if captureRules.shouldIgnorePasteboard(types: Set((pasteboard.types ?? []).map(\.rawValue))) {
       return
     }
 
@@ -164,31 +170,22 @@ class Clipboard: @unchecked Sendable {
     var coreContents = [ClipboardRawContent]()
     let copiedAt = Date.now
     pasteboard.pasteboardItems?.forEach({ item in
-      var types = Set(item.types)
-      if types.contains(.string) && isEmptyString(item) && !hasRichTextPayload(item) {
-        return
-      }
+      let itemTypes = Set(item.types)
 
       if shouldIgnore(item) {
         return
       }
 
-      types = types
-        .subtracting(disabledTypes)
-        .filter { !$0.rawValue.starts(with: dynamicTypePrefix) }
-        .filter { !$0.rawValue.starts(with: microsoftSourcePrefix) }
-
-      // Avoid reading Microsoft Word links from bookmarks and cross-references.
-      // https://github.com/p0deje/Maccy/issues/613
-      // https://github.com/p0deje/Maccy/issues/770
-      if types.isSuperset(of: [.microsoftLinkSource, .microsoftObjectLink]) {
-        types = types.subtracting([.microsoftLinkSource, .microsoftObjectLink, .pdf])
-      }
+      let types = captureRules.selectedItemTypes(
+        from: Set(itemTypes.map(\.rawValue)),
+        hasEmptyPlainText: itemTypes.contains(.string) && isEmptyString(item),
+        hasRichTextPayload: hasRichTextPayload(item)
+      )
 
       types.forEach { type in
-        let data = item.data(forType: type)
+        let data = item.data(forType: NSPasteboard.PasteboardType(type))
         if let data {
-          coreContents.append(ClipboardRawContent(pasteboardType: type.rawValue, data: data))
+          coreContents.append(ClipboardRawContent(pasteboardType: type, data: data))
         }
       }
     })
@@ -230,14 +227,6 @@ class Clipboard: @unchecked Sendable {
         }
       }
     }
-  }
-
-  private func shouldIgnore(_ types: Set<NSPasteboard.PasteboardType>) -> Bool {
-    let ignoredTypes = self.ignoredTypes
-      .union(Defaults[.ignoredPasteboardTypes].map({ NSPasteboard.PasteboardType($0) }))
-
-    return types.isDisjoint(with: enabledTypes) ||
-      !types.isDisjoint(with: ignoredTypes)
   }
 
   private func shouldIgnore(_ sourceAppBundle: String) -> Bool {
