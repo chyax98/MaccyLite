@@ -103,7 +103,11 @@ final class DailyExportScheduler {
 
   private func catchUpMissingExports() {
     for day in schedulePolicy().missingExportDays(before: Date.now, isExportCurrent: exportAlreadyCurrent) {
-      _ = export(day: day)
+      let outcome = export(day: day)
+      if !outcome.succeeded {
+        showBackgroundFailure(outcome)
+        return
+      }
     }
   }
 
@@ -129,7 +133,10 @@ final class DailyExportScheduler {
   private func runScheduledExport() {
     queue.async { [weak self] in
       guard let self else { return }
-      _ = exportYesterday()
+      let outcome = exportYesterday()
+      if !outcome.succeeded {
+        showBackgroundFailure(outcome)
+      }
 
       if Defaults[.dailyExportCleanupOrphans] {
         _ = ClipboardCoreStore.shared.removeOrphanAssets()
@@ -149,6 +156,13 @@ final class DailyExportScheduler {
     } catch {
       logger.error("Failed to export clipboard items for \(day): \(error.localizedDescription)")
       return .failure(error.localizedDescription)
+    }
+  }
+
+  private func showBackgroundFailure(_ outcome: DailyExportOutcome) {
+    DispatchQueue.main.async {
+      let suffix = outcome.errorMessage.map { "：\($0)" } ?? ""
+      AppState.shared.appDelegate?.showTransientStatus("每日导出失败\(suffix)")
     }
   }
 
