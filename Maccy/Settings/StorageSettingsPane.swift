@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import Defaults
 import Settings
@@ -57,17 +58,26 @@ struct StorageSettingsPane: View {
   }
 
   @Default(.size) private var size
-  @Default(.sortBy) private var sortBy
+  @Default(.dailyExportCatchUpDays) private var dailyExportCatchUpDays
+  @Default(.dailyExportCleanupOrphans) private var dailyExportCleanupOrphans
+  @Default(.dailyExportEnabled) private var dailyExportEnabled
+  @Default(.dailyExportHour) private var dailyExportHour
+  @Default(.dailyExportMinute) private var dailyExportMinute
 
   @State private var viewModel = ViewModel()
-  @State private var storageSize = Storage.shared.size
+  @State private var storageSize = ""
+  @State private var exportStatus = ""
 
   private let sizeFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
     formatter.minimum = 1
-    formatter.maximum = 999
+    formatter.maximum = 100_000
     return formatter
   }()
+
+  private let hourRange = 0...23
+  private let minuteRange = 0...59
+  private let catchUpRange = 0...30
 
   var body: some View {
     Settings.Container(contentWidth: 450) {
@@ -97,30 +107,104 @@ struct StorageSettingsPane: View {
           TextField("", value: $size, formatter: sizeFormatter)
             .frame(width: 80)
             .help(Text("SizeTooltip", tableName: "StorageSettings"))
-          Stepper("", value: $size, in: 1...999)
+          Stepper("", value: $size, in: 1...100_000)
             .labelsHidden()
           Text(storageSize)
             .controlSize(.small)
             .foregroundStyle(.gray)
             .help(Text("CurrentSizeTooltip", tableName: "StorageSettings"))
             .onAppear {
-              storageSize = Storage.shared.size
+              refreshStorageSize()
             }
         }
       }
 
-      Settings.Section(label: { Text("SortBy", tableName: "StorageSettings") }) {
-        Picker("", selection: $sortBy) {
-          ForEach(Sorter.By.allCases) { mode in
-            Text(mode.description)
+      Settings.Section(
+        bottomDivider: true,
+        label: { Text("每日导出") }
+      ) {
+        Defaults.Toggle(key: .dailyExportEnabled) {
+          Text("启用每日导出")
+        }
+
+        HStack {
+          Text("导出时间")
+          Stepper(value: $dailyExportHour, in: hourRange) {
+            Text(String(format: "%02d", dailyExportHour))
+              .monospacedDigit()
+          }
+          Text(":")
+          Stepper(value: $dailyExportMinute, in: minuteRange) {
+            Text(String(format: "%02d", dailyExportMinute))
+              .monospacedDigit()
           }
         }
-        .labelsHidden()
-        .frame(width: 160, alignment: .leading)
-        .help(Text("SortByTooltip", tableName: "StorageSettings"))
+        .disabled(!dailyExportEnabled)
+
+        HStack {
+          Text("启动时补导出")
+          Stepper(value: $dailyExportCatchUpDays, in: catchUpRange) {
+            Text("\(dailyExportCatchUpDays) 天")
+          }
+        }
+        .disabled(!dailyExportEnabled)
+
+        Toggle("导出后清理孤儿资产", isOn: $dailyExportCleanupOrphans)
+          .disabled(!dailyExportEnabled)
+
+        HStack {
+          Button("导出昨天") {
+            exportStatus = "导出中..."
+            DailyExportScheduler.shared.exportYesterday { url in
+              exportStatus = exportMessage(url)
+              refreshStorageSize()
+            }
+          }
+          Button("导出今天") {
+            exportStatus = "导出中..."
+            DailyExportScheduler.shared.exportToday { url in
+              exportStatus = exportMessage(url)
+              refreshStorageSize()
+            }
+          }
+        }
+
+        Text(exportDirectoryPath)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .textSelection(.enabled)
+
+        if !exportStatus.isEmpty {
+          Text(exportStatus)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
+        }
       }
     }
   }
+
+  private func exportMessage(_ url: URL?) -> String {
+    if let url {
+      return "已导出：\(url.path)"
+    }
+
+    return "导出失败"
+  }
+
+  private var exportDirectoryPath: String {
+    ClipboardCoreStore.shared.exportDirectory.path
+  }
+
+  private func refreshStorageSize() {
+    Task {
+      let size = await Task.detached(priority: .utility) {
+        ClipboardCoreStore.shared.storageSize
+      }.value
+      storageSize = size
+    }
+  }
+
 }
 
 #Preview {

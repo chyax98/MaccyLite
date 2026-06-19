@@ -5,7 +5,7 @@ import Settings
 import SwiftUI
 
 @Observable
-class AppState: Sendable {
+class AppState {
   static let shared = AppState(history: History.shared, footer: Footer())
 
   let multiSelectionEnabled = false
@@ -138,7 +138,6 @@ class AppState: Sendable {
           ) {
             PinsSettingsPane()
               .environment(self)
-              .modelContainer(Storage.shared.container)
           },
           Settings.Pane(
             identifier: Settings.PaneIdentifier.ignore,

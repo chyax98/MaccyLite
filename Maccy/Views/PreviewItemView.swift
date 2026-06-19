@@ -74,19 +74,19 @@ struct PreviewItemView: View {
 
       HStack(spacing: 3) {
         Text("FirstCopyTime", tableName: "PreviewItemView")
-        Text(item.item.firstCopiedAt, style: .date)
-        Text(item.item.firstCopiedAt, style: .time)
+        Text(item.copiedAt, style: .date)
+        Text(item.copiedAt, style: .time)
       }
 
       HStack(spacing: 3) {
         Text("LastCopyTime", tableName: "PreviewItemView")
-        Text(item.item.lastCopiedAt, style: .date)
-        Text(item.item.lastCopiedAt, style: .time)
+        Text(item.copiedAt, style: .date)
+        Text(item.copiedAt, style: .time)
       }
 
       HStack(spacing: 3) {
         Text("NumberOfCopies", tableName: "PreviewItemView")
-        Text(String(item.item.numberOfCopies))
+        Text(String(item.copyCount))
       }
     }
     .controlSize(.small)

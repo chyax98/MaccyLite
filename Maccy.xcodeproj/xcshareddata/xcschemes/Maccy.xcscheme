@@ -35,26 +35,6 @@
          </TestPlanReference>
       </TestPlans>
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "DA360DAF1E3DF137005C6F6B"
-               BuildableName = "MaccyTests.xctest"
-               BlueprintName = "MaccyTests"
-               ReferencedContainer = "container:Maccy.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "DA0EE7B5204657830025FC60"
-               BuildableName = "MaccyUITests.xctest"
-               BlueprintName = "MaccyUITests"
-               ReferencedContainer = "container:Maccy.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

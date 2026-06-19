@@ -14,10 +14,10 @@ struct HistoryListView: View {
   @Default(.showFooter) private var showFooter
 
   private var pinnedItems: [HistoryItemDecorator] {
-    appState.history.pinnedItems.filter(\.isVisible)
+    appState.history.visiblePinnedItems
   }
   private var unpinnedItems: [HistoryItemDecorator] {
-    appState.history.unpinnedItems.filter(\.isVisible)
+    appState.history.visibleUnpinnedItems
   }
   private var showPinsSeparator: Bool {
     pinsVisible && !unpinnedItems.isEmpty
@@ -116,7 +116,7 @@ struct HistoryListView: View {
           if scenePhase == .active {
             searchFocused = true
             appState.navigator.isKeyboardNavigating = true
-            appState.navigator.select(item: appState.history.unpinnedItems.first ?? appState.history.pinnedItems.first)
+            appState.navigator.select(item: appState.history.visibleUnpinnedItems.first ?? appState.history.visiblePinnedItems.first)
             appState.preview.enableAutoOpen()
             appState.preview.resetAutoOpenSuppression()
             appState.preview.startAutoOpen()
