@@ -29,7 +29,6 @@
 		DA3EAE0C2AE30F7500F39108 /* NSApplication+Windows.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3EAE0B2AE30F7500F39108 /* NSApplication+Windows.swift */; };
 		DA49EE7528B59468002752E0 /* NSRect+Centered.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA49EE7428B59468002752E0 /* NSRect+Centered.swift */; };
 		DA49EE7928B594DC002752E0 /* NSRunningApplication+WindowFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA49EE7828B594DC002752E0 /* NSRunningApplication+WindowFrame.swift */; };
-		DA5154D82564102900C01004 /* Sauce in Frameworks */ = {isa = PBXBuildFile; productRef = DA5154D72564102900C01004 /* Sauce */; };
 		DA5F46512020E9FB00425C11 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DA5F464F2020E4DF00425C11 /* Carbon.framework */; };
 		DA6373981E4AB9BB00263391 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DA6373971E4AB9BB00263391 /* Assets.xcassets */; };
 		DA6491B029ABCF2400837D93 /* NSScreen+ForPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6491AF29ABCF2400837D93 /* NSScreen+ForPopup.swift */; };
@@ -43,7 +42,6 @@
 		DAA072D72C41C574006DDFD2 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA072D62C41C574006DDFD2 /* AppState.swift */; };
 		DAA54BFC2F31000100B7FDD8 /* AppKitHistoryPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA54BFB2F31000100B7FDD8 /* AppKitHistoryPanel.swift */; };
 		DAAEB196219694AE00A7883C /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAAEB195219694AE00A7883C /* About.swift */; };
-		DABDE97F2974706C005B32E9 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DABDE97E2974706C005B32E9 /* KeyboardLayout.swift */; };
 		DAE8F5D42C43262B00851CA9 /* Popup.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE8F5D32C43262B00851CA9 /* Popup.swift */; };
 		DAEE38471E3DBEB100DD2966 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAEE38461E3DBEB100DD2966 /* AppDelegate.swift */; };
 		DAFE2DDA268A521B00990986 /* String+Shortened.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAFE2DD9268A521A00990986 /* String+Shortened.swift */; };
@@ -128,7 +126,6 @@
 		DAAEB195219694AE00A7883C /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 
 		DAB8CE4024E3677F00A2500E /* Maccy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Maccy.entitlements; sourceTree = "<group>"; };
-		DABDE97E2974706C005B32E9 /* KeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayout.swift; sourceTree = "<group>"; };
 		DAC929D6297A0E8B00814F19 /* NSPasteboard.PasteboardType+Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSPasteboard.PasteboardType+Types.swift"; sourceTree = "<group>"; };
 		DACCD5822C93605C00BAD74C /* Maccy.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Maccy.xctestplan; sourceTree = "<group>"; };
 
@@ -148,7 +145,6 @@
 				2FA51A052F21000100AA0001 /* ClipboardCore in Frameworks */,
 				DA5F46512020E9FB00425C11 /* Carbon.framework in Frameworks */,
 				2F12271E2E5C932200A1592A /* Logging in Frameworks */,
-				DA5154D82564102900C01004 /* Sauce in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -229,7 +225,6 @@
 					2FA51A092F21000300AA0001 /* DailyExportScheduler.swift */,
 					2FA51A0B2F21000400AA0001 /* PasteController.swift */,
 				DA1969202C3F6C6800258481 /* HistoryItemAction.swift */,
-				DABDE97E2974706C005B32E9 /* KeyboardLayout.swift */,
 				DA05B5102C234CB1006980FE /* MaccyApp.swift */,
 				DA689FCB2C1D1D510009B887 /* MenuIcon.swift */,
 				DA689FC72C1D15140009B887 /* PinsPosition.swift */,
@@ -261,7 +256,6 @@
 			);
 			name = Maccy;
 			packageProductDependencies = (
-				DA5154D72564102900C01004 /* Sauce */,
 				2F12271D2E5C932200A1592A /* Logging */,
 				2FA51A062F21000100AA0001 /* ClipboardCore */,
 			);
@@ -297,7 +291,6 @@
 			);
 			mainGroup = DAEE383A1E3DBEB100DD2966;
 			packageReferences = (
-				DA5154D62564102900C01004 /* XCRemoteSwiftPackageReference "Sauce" */,
 				2F12271C2E5C932200A1592A /* XCRemoteSwiftPackageReference "swift-log" */,
 				2FA51A042F21000100AA0001 /* XCLocalSwiftPackageReference "ClipboardCore" */,
 			);
@@ -343,7 +336,6 @@
 				DA6D98E22AEABE03008A77CE /* Accessibility.swift in Sources */,
 				DA1969212C3F6C6800258481 /* HistoryItemAction.swift in Sources */,
 				0ABDD5122BB47F1E0054963B /* NSWorkspace+ApplicationName.swift in Sources */,
-				DABDE97F2974706C005B32E9 /* KeyboardLayout.swift in Sources */,
 				DA49EE7928B594DC002752E0 /* NSRunningApplication+WindowFrame.swift in Sources */,
 				DA3BCB922C3EEC3C00B01BC1 /* History.swift in Sources */,
 				DA6491B029ABCF2400837D93 /* NSScreen+ForPopup.swift in Sources */,
@@ -611,14 +603,6 @@
 				minimumVersion = 1.6.4;
 			};
 		};
-		DA5154D62564102900C01004 /* XCRemoteSwiftPackageReference "Sauce" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Clipy/Sauce";
-			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 2.4.1;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -631,11 +615,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2FA51A042F21000100AA0001 /* XCLocalSwiftPackageReference "ClipboardCore" */;
 			productName = ClipboardCore;
-		};
-		DA5154D72564102900C01004 /* Sauce */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = DA5154D62564102900C01004 /* XCRemoteSwiftPackageReference "Sauce" */;
-			productName = Sauce;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

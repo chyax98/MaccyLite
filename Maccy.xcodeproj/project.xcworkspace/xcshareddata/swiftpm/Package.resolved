@@ -11,15 +11,6 @@
       }
     },
     {
-      "identity" : "sauce",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Clipy/Sauce",
-      "state" : {
-        "revision" : "df657bc1beba23ffd580953f183cd756b5bcd514",
-        "version" : "2.4.1"
-      }
-    },
-    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log",

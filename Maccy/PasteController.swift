@@ -1,6 +1,6 @@
 import AppKit
+import Carbon.HIToolbox
 import Logging
-import Sauce
 
 final class PasteController {
   static let shared = PasteController()
@@ -9,7 +9,6 @@ final class PasteController {
 
   private init() {}
 
-  private var pasteKey: Key { pasteMenuItem?.key ?? .v }
   private var pasteKeyModifiers: NSEvent.ModifierFlags { pasteMenuItem?.keyEquivalentModifierMask ?? .command }
   private var pasteMenuItem: NSMenuItem? {
     NSApp.mainMenu?.items
@@ -27,15 +26,8 @@ final class PasteController {
 
     // Add flag that left/right modifier key has been pressed.
     // See https://github.com/TermiT/Flycut/pull/18 for details.
-    let pasteKey = pasteKey
     let cmdFlag = CGEventFlags(rawValue: UInt64(pasteKeyModifiers.rawValue) | 0x000008)
-    var vCode = Sauce.shared.keyCode(for: pasteKey)
-
-    // Force QWERTY keycode when keyboard layout switches to
-    // QWERTY upon pressing command key.
-    if KeyboardLayout.current.commandSwitchesToQWERTY && cmdFlag.contains(.maskCommand) {
-      vCode = pasteKey.QWERTYKeyCode
-    }
+    let vCode = CGKeyCode(kVK_ANSI_V)
 
     let source = CGEventSource(stateID: .combinedSessionState)
     source?.setLocalEventsFilterDuringSuppressionState(

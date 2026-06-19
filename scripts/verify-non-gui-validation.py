@@ -447,6 +447,8 @@ for forbidden in [
   "Vision.framework",
   "Sparkle",
   "AppIntents",
+  "Sauce",
+  "KeyboardLayout.swift",
   "com.p0deje",
   "org.p0deje",
 ]:
@@ -481,6 +483,7 @@ for forbidden in [
 removed_package_identities = {
   "sparkle",
   "fuse",
+  "sauce",
 }
 require_package_pin(
   "ClipboardCore/Package.resolved",
