@@ -133,7 +133,7 @@ func databaseListAndSearchHideLegacyDuplicateFingerprints() throws {
 }
 
 @Test
-func databaseLimitsShortChineseQueryToRecentSearchScope() throws {
+func databaseShortChineseQueryFallsBackToFullHistory() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
 
@@ -175,7 +175,7 @@ func databaseLimitsShortChineseQueryToRecentSearchScope() throws {
     ))
   }
 
-  #expect(try database.search("健康", limit: 10).isEmpty)
+  #expect(try database.search("健康", limit: 10).map(\.id) == ["old-target"])
   #expect(try database.search("健康计划", limit: 10).map(\.id) == ["old-target"])
 }
 
@@ -283,6 +283,52 @@ func databaseSearchRanksExactAndPrefixMatchesBeforeRecentContainsMatches() throw
 }
 
 @Test
+func databaseSearchMergesRecentLikeBeforeFtsResults() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+
+  for index in 0..<3 {
+    try database.insert(ClipboardItemDraft(
+      id: "fts-\(index)",
+      copiedAt: Date(timeIntervalSince1970: Double(index + 1)),
+      sourceApp: nil,
+      primaryType: ClipboardContentType.plainText,
+      displayText: "tokenized \(index)",
+      searchText: "tokenized \(index)",
+      contents: [
+        ClipboardContentDraft(
+          pasteboardType: ClipboardContentType.plainText,
+          byteCount: 11,
+          inlineData: Data("tokenized \(index)".utf8),
+          assetPath: nil,
+          contentHash: "fts-\(index)"
+        )
+      ]
+    ))
+  }
+
+  try database.insert(ClipboardItemDraft(
+    id: "substring",
+    copiedAt: Date(timeIntervalSince1970: 10),
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "xx-tokenized-yy",
+    searchText: "xx-tokenized-yy",
+    contents: [
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.plainText,
+        byteCount: 15,
+        inlineData: Data("xx-tokenized-yy".utf8),
+        assetPath: nil,
+        contentHash: "substring"
+      )
+    ]
+  ))
+
+  #expect(try database.search("tokenized", limit: 10).map(\.id).contains("substring"))
+}
+
+@Test
 func databaseSearchMatchesURLFilenameTokensSplitByPunctuation() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
@@ -327,6 +373,7 @@ func storagePolicyStoresLargeTextAsAssetAndKeepsPrefixInline() throws {
   #expect(draft.inlineData != nil)
   #expect(draft.inlineData!.count <= 12)
   #expect(try assetStore.read(draft.assetPath!) == data)
+  #expect(try assetStore.readPrefix(draft.assetPath!, byteCount: 9) == Data(data.prefix(9)))
 }
 
 @Test
@@ -577,6 +624,56 @@ func databasePinsAndDeletesItems() throws {
   try database.delete(itemID: "older")
   #expect(try database.latest().map(\.id) == ["newer"])
   #expect(try database.search("旧项目").isEmpty)
+}
+
+@Test
+func databaseDeleteRemovesLegacyDuplicateFingerprintGroup() throws {
+  let directory = try temporaryDirectory()
+  let path = directory.appending(path: "Clipboard.sqlite")
+  do {
+    let database = try ClipboardDatabase(path: path)
+    for (id, copiedAt, hash) in [
+      ("older", Date(timeIntervalSince1970: 1), "older-hash"),
+      ("newer", Date(timeIntervalSince1970: 2), "newer-hash")
+    ] {
+      let data = Data("删除重复项".utf8)
+      try database.insert(ClipboardItemDraft(
+        id: id,
+        copiedAt: copiedAt,
+        sourceApp: nil,
+        primaryType: ClipboardContentType.plainText,
+        displayText: "删除重复项",
+        searchText: "删除重复项",
+        contents: [
+          ClipboardContentDraft(
+            pasteboardType: ClipboardContentType.plainText,
+            byteCount: data.count,
+            inlineData: data,
+            assetPath: nil,
+            contentHash: hash
+          )
+        ]
+      ))
+    }
+  }
+
+  let queue = try DatabaseQueue(path: path.path)
+  try queue.write { db in
+    let fingerprint = try String.fetchOne(
+      db,
+      sql: "SELECT content_fingerprint FROM clipboard_items WHERE id = 'older'"
+    )
+    try db.execute(
+      sql: "UPDATE clipboard_items SET content_fingerprint = ? WHERE id = 'newer'",
+      arguments: [fingerprint]
+    )
+  }
+
+  let database = try ClipboardDatabase(path: path)
+  #expect(try database.latest().map(\.id) == ["newer"])
+  try database.delete(itemID: "newer")
+  #expect(try database.latest().isEmpty)
+  #expect(try database.search("删除重复项").isEmpty)
 }
 
 @Test
@@ -1362,7 +1459,7 @@ func pasteboardCaptureRulesAllowOnlySupportedEnabledTypes() {
 }
 
 @Test
-func pasteboardCaptureRulesPreferHTMLOverRTFWhenBothRichTypesExist() {
+func pasteboardCaptureRulesPreserveHTMLAndRTFWhenBothRichTypesExist() {
   let rules = ClipboardPasteboardCaptureRules()
 
   let selected = rules.selectedItemTypes(
@@ -1377,7 +1474,8 @@ func pasteboardCaptureRulesPreferHTMLOverRTFWhenBothRichTypesExist() {
 
   #expect(selected == [
     ClipboardContentType.plainText,
-    ClipboardContentType.html
+    ClipboardContentType.html,
+    ClipboardContentType.rtf
   ])
 }
 

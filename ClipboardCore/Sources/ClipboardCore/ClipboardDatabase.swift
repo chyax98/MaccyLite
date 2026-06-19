@@ -179,9 +179,32 @@ public final class ClipboardDatabase: @unchecked Sendable {
 
   public func delete(itemID: String) throws {
     try writer.write { db in
-      try db.execute(sql: "DELETE FROM clipboard_search WHERE item_id = ?", arguments: [itemID])
-      try db.execute(sql: "DELETE FROM clipboard_trigram WHERE item_id = ?", arguments: [itemID])
-      try db.execute(sql: "DELETE FROM clipboard_items WHERE id = ?", arguments: [itemID])
+      try db.execute(sql: "DROP TABLE IF EXISTS temp.delete_candidates")
+      try db.execute(sql: "CREATE TEMP TABLE delete_candidates(id TEXT PRIMARY KEY) WITHOUT ROWID")
+      try db.execute(
+        sql: """
+        INSERT INTO delete_candidates(id)
+          SELECT candidate.id
+          FROM clipboard_items selected
+          JOIN clipboard_items candidate
+            ON selected.content_fingerprint IS NOT NULL
+           AND selected.content_fingerprint != ''
+           AND candidate.content_fingerprint = selected.content_fingerprint
+          WHERE selected.id = ?
+        """,
+        arguments: [itemID]
+      )
+      try db.execute(
+        sql: """
+        INSERT OR IGNORE INTO delete_candidates(id)
+        VALUES (?)
+        """,
+        arguments: [itemID]
+      )
+      try db.execute(sql: "DELETE FROM clipboard_search WHERE item_id IN (SELECT id FROM delete_candidates)")
+      try db.execute(sql: "DELETE FROM clipboard_trigram WHERE item_id IN (SELECT id FROM delete_candidates)")
+      try db.execute(sql: "DELETE FROM clipboard_items WHERE id IN (SELECT id FROM delete_candidates)")
+      try db.execute(sql: "DROP TABLE IF EXISTS temp.delete_candidates")
     }
   }
 
@@ -260,17 +283,24 @@ public final class ClipboardDatabase: @unchecked Sendable {
     }
 
     return try writer.read { db in
+      let recent = try recentLikeSearch(db, query: trimmed, limit: limit)
       if trimmed.count <= 2 {
-        return try recentLikeSearch(db, query: trimmed, limit: limit)
+        if recent.count >= limit {
+          return recent
+        }
+        let full = try fullLikeSearch(db, query: trimmed, limit: limit)
+        return mergeSearchResults(primary: recent, secondary: full, limit: limit)
       }
 
       let expanded = try ftsSearch(db, query: trimmed, limit: limit)
-      if expanded.count >= limit {
-        return expanded
+      let merged = mergeSearchResults(primary: recent, secondary: expanded, limit: limit)
+
+      guard merged.count < limit else {
+        return merged
       }
 
-      let recent = try recentLikeSearch(db, query: trimmed, limit: limit)
-      return mergeSearchResults(primary: expanded, secondary: recent, limit: limit)
+      let full = try fullLikeSearch(db, query: trimmed, limit: limit)
+      return mergeSearchResults(primary: merged, secondary: full, limit: limit)
     }
   }
 
@@ -724,6 +754,31 @@ public final class ClipboardDatabase: @unchecked Sendable {
       LIMIT ?
       """,
       arguments: [recentSearchScope, likePattern(query), query, prefixPattern(query), limit]
+    )
+  }
+
+  private func fullLikeSearch(
+    _ db: Database,
+    query: String,
+    limit: Int
+  ) throws -> [ClipboardListItem] {
+    try fetchListItems(
+      db,
+      sql: """
+      SELECT \(listItemColumns(alias: "i"))
+      FROM clipboard_items i
+      WHERE i.search_text LIKE ? ESCAPE '\\'
+        AND \(visibleFingerprintPredicate(alias: "i"))
+      ORDER BY
+        CASE
+          WHEN i.search_text = ? COLLATE NOCASE THEN 0
+          WHEN i.search_text LIKE ? ESCAPE '\\' THEN 1
+          ELSE 2
+        END,
+        i.copied_at DESC
+      LIMIT ?
+      """,
+      arguments: [likePattern(query), query, prefixPattern(query), limit]
     )
   }
 

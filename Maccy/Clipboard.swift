@@ -276,21 +276,11 @@ class Clipboard: @unchecked Sendable {
   }
 
   private func orderedTypes(_ types: Set<String>) -> [String] {
-    let normalizedTypes = preferredRichTypes(from: types)
     let known = readPriority
       .map(\.rawValue)
-      .filter(normalizedTypes.contains)
+      .filter(types.contains)
     let knownSet = Set(known)
-    return known + normalizedTypes.subtracting(knownSet).sorted()
-  }
-
-  private func preferredRichTypes(from types: Set<String>) -> Set<String> {
-    guard types.contains(NSPasteboard.PasteboardType.html.rawValue),
-          types.contains(NSPasteboard.PasteboardType.rtf.rawValue) else {
-      return types
-    }
-
-    return types.subtracting([NSPasteboard.PasteboardType.rtf.rawValue])
+    return known + types.subtracting(knownSet).sorted()
   }
 
   private func isEmptyString(_ string: String?) -> Bool {

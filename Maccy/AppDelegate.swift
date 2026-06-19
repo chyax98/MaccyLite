@@ -31,6 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     Clipboard.shared.onNewCoreCopy { [weak self] item in
       History.shared.add(item)
       self?.refreshMenuIconText()
+      self?.panel?.refreshIfOpen()
     }
     Clipboard.shared.start()
     DailyExportScheduler.shared.start()

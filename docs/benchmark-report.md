@@ -25,7 +25,7 @@ Default thresholds:
 
 Text mode inserts synthetic clipboard text rows and measures latest-page lookup, common Chinese search, and common token search.
 
-Mixed mode inserts short text, long text stored through `ClipboardCapture` / `StoragePolicy` / `AssetStore`, HTML, RTF, file URL, and image asset rows. Runtime App image capture is removed, but Core still verifies image asset metadata and existing image history export.
+Mixed mode inserts short text, long text stored through `ClipboardCapture` / `StoragePolicy` / `AssetStore`, HTML, RTF, file URL, and image asset rows. Runtime App captures images by default, while list rendering stays metadata-first and preview generates bounded thumbnails.
 
 ## 2026-06-19 Baseline
 

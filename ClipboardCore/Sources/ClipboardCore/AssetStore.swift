@@ -40,6 +40,18 @@ public final class AssetStore: @unchecked Sendable {
     try Data(contentsOf: root.appending(path: relativePath))
   }
 
+  public func readPrefix(_ relativePath: String, byteCount: Int) throws -> Data {
+    guard byteCount > 0 else {
+      return Data()
+    }
+
+    let handle = try FileHandle(forReadingFrom: root.appending(path: relativePath))
+    defer {
+      try? handle.close()
+    }
+    return try handle.read(upToCount: byteCount) ?? Data()
+  }
+
   public func exists(_ relativePath: String) -> Bool {
     FileManager.default.fileExists(atPath: root.appending(path: relativePath).path)
   }

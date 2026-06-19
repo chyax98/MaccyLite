@@ -69,7 +69,8 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     let size = AppPreferences.windowSize
     setContentSize(NSSize(width: size.width, height: size.height))
     setFrameOrigin(popupPosition.origin(size: frame.size, statusBarButton: statusBarButton))
-    reload(query: searchField.stringValue)
+    searchField.stringValue = ""
+    reload(query: "", force: true)
     orderFrontRegardless()
     makeKey()
     makeFirstResponder(searchField)
@@ -89,6 +90,13 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
   func isOpen() -> Bool {
     isPresented
+  }
+
+  func refreshIfOpen() {
+    guard isPresented else {
+      return
+    }
+    reload(query: searchField.stringValue, force: true)
   }
 
   override func close() {
@@ -319,7 +327,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     searchTask = Task {
       let loaded = await withCheckedContinuation { continuation in
         reloadQueue.async {
-          guard !Task.isCancelled else {
+          guard requestID == self.reloadRequestID else {
             continuation.resume(returning: (items: [ClipboardListItem](), titles: [String]()))
             return
           }
@@ -335,8 +343,12 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       guard !Task.isCancelled else { return }
       await MainActor.run {
         guard requestID == self.reloadRequestID,
-              trimmed == self.lastReloadQuery,
-              revision == ClipboardCoreStore.shared.revision else {
+              trimmed == self.lastReloadQuery else {
+          return
+        }
+
+        guard revision == ClipboardCoreStore.shared.revision else {
+          self.reload(query: trimmed, force: true)
           return
         }
 
@@ -446,6 +458,24 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       return
     }
 
+    if item.primaryType == ClipboardContentType.fileURL {
+      showPreviewText("正在载入文件预览...")
+      let scale = NSScreen.main?.backingScaleFactor ?? 2
+      previewTask = Task.detached(priority: .utility) {
+        let payload = await Self.loadFilePreview(itemID: item.id, scale: scale)
+        await MainActor.run {
+          guard requestID == self.previewRequestID else { return }
+          let text = payload.text
+          if let image = payload.image {
+            self.showPreviewImage(image, text: "\(text)\n\n\(Self.infoText(for: item))")
+          } else {
+            self.showPreviewText("\(text)\n\n\(Self.infoText(for: item))")
+          }
+        }
+      }
+      return
+    }
+
     if item.hasImage {
       showPreviewText("正在载入图片...")
       previewTask = Task.detached(priority: .utility) {
@@ -462,29 +492,17 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       return
     }
 
-    if item.primaryType == ClipboardContentType.fileURL {
-      let text = Self.filePreviewText(item.displayText)
-      showPreviewText("正在载入文件预览...\n\(text)")
-      previewTask = Task.detached(priority: .utility) {
-        let image = await Self.loadFilePreviewImage(itemID: item.id)
-        await MainActor.run {
-          guard requestID == self.previewRequestID else { return }
-          if let image {
-            self.showPreviewImage(image, text: "\(text)\n\n\(Self.infoText(for: item))")
-          } else {
-            self.showPreviewText("\(text)\n\n\(Self.infoText(for: item))")
-          }
-        }
+    showPreviewText("正在载入文本...")
+    previewTask = Task.detached(priority: .utility) {
+      let preview = Self.loadTextPreview(itemID: item.id, fallback: item.displayText)
+      await MainActor.run {
+        guard requestID == self.previewRequestID else { return }
+        self.showPreviewTextDocument(
+          Self.previewText(preview),
+          info: Self.infoText(for: item, characterCount: preview.characterCount)
+        )
       }
-      return
     }
-
-    let text = Self.loadTextPreview(itemID: item.id, fallback: item.displayText)
-    guard requestID == previewRequestID else { return }
-    showPreviewTextDocument(
-      Self.previewText(text),
-      info: Self.infoText(for: item)
-    )
   }
 
   private func showPreviewImage(_ image: NSImage, text: String? = nil) {
@@ -533,21 +551,21 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
   nonisolated private static func titleText(for item: ClipboardListItem) -> String {
     let text = item.displayText.replacingOccurrences(of: "\n", with: " ")
-    if item.hasImage {
-      return text == "图片" ? "图片" : text.shortened(to: 120)
-    }
     if item.primaryType == ClipboardContentType.fileURL {
       return filePreviewText(item.displayText).shortened(to: 120)
+    }
+    if item.hasImage {
+      return text == "图片" ? "图片" : text.shortened(to: 120)
     }
     return text.shortened(to: 160)
   }
 
   nonisolated private static func icon(for item: ClipboardListItem) -> NSImage? {
-    if item.hasImage {
-      return NSImage(systemSymbolName: "photo", accessibilityDescription: "图片")
-    }
     if item.primaryType == ClipboardContentType.fileURL {
       return NSImage(systemSymbolName: "doc", accessibilityDescription: "文件")
+    }
+    if item.hasImage {
+      return NSImage(systemSymbolName: "photo", accessibilityDescription: "图片")
     }
     if item.isPinned {
       return NSImage(systemSymbolName: "pin", accessibilityDescription: "固定")
@@ -555,19 +573,19 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     return NSImage(systemSymbolName: "doc.text", accessibilityDescription: "文本")
   }
 
-  nonisolated private static func infoText(for item: ClipboardListItem) -> String {
-    [
+  nonisolated private static func infoText(for item: ClipboardListItem, characterCount: Int? = nil) -> String {
+    var lines = [
       "来源：\(item.sourceApp ?? "未知")",
       "类型：\(readableType(item))",
-      "字符：\(item.displayText.count)",
       "时间：\(item.copiedAt.formatted(date: .numeric, time: .shortened))"
-    ].joined(separator: "\n")
+    ]
+    if let characterCount {
+      lines.insert("字符：\(characterCount)", at: 2)
+    }
+    return lines.joined(separator: "\n")
   }
 
   nonisolated private static func readableType(_ item: ClipboardListItem) -> String {
-    if item.hasImage {
-      return "图片"
-    }
     switch item.primaryType {
     case ClipboardContentType.plainText, ClipboardContentType.legacyPlainText:
       return "文本"
@@ -578,13 +596,16 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     case ClipboardContentType.rtf:
       return "富文本"
     default:
+      if item.hasImage {
+        return "图片"
+      }
       return item.primaryType
     }
   }
 
-  nonisolated private static func loadTextPreview(itemID: String, fallback: String) -> String {
+  nonisolated private static func loadTextPreview(itemID: String, fallback: String) -> TextPreviewPayload {
     guard let item = ClipboardCoreStore.shared.item(id: itemID) else {
-      return fallback
+      return TextPreviewPayload(text: fallback, isTruncated: false)
     }
 
     let preferredTypes = [
@@ -595,39 +616,46 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     ]
 
     for type in preferredTypes {
-      guard let content = item.contents.first(where: { $0.pasteboardType == type }),
-            let data = ClipboardCoreStore.shared.data(for: content) else {
+      guard let content = item.contents.first(where: { $0.pasteboardType == type }) else {
+        continue
+      }
+
+      let shouldReadPrefix = content.byteCount > textPreviewFullReadByteLimit
+      guard let data = shouldReadPrefix
+        ? ClipboardCoreStore.shared.dataPrefix(for: content, byteCount: textPreviewPrefixByteLimit)
+        : ClipboardCoreStore.shared.data(for: content) else {
         continue
       }
 
       if type == ClipboardContentType.rtf,
+         !shouldReadPrefix,
          let attributed = try? NSAttributedString(
           data: data,
           options: [.documentType: NSAttributedString.DocumentType.rtf],
           documentAttributes: nil
          ) {
-        return attributed.string
+        return TextPreviewPayload(text: attributed.string, isTruncated: false)
       }
 
       if let text = String(data: data, encoding: .utf8) {
-        return type == ClipboardContentType.html ? stripHTML(text) : text
+        let preview = type == ClipboardContentType.html ? stripHTML(text) : text
+        return TextPreviewPayload(text: preview, isTruncated: shouldReadPrefix)
       }
     }
 
-    return fallback
+    return TextPreviewPayload(text: fallback, isTruncated: false)
   }
 
-  nonisolated private static func previewText(_ text: String) -> String {
-    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else {
+  nonisolated private static func previewText(_ payload: TextPreviewPayload) -> String {
+    guard !payload.text.isEmpty else {
       return "没有可预览内容"
     }
 
-    guard trimmed.count > textPreviewCharacterLimit else {
-      return trimmed
+    guard payload.isTruncated || payload.text.count > textPreviewCharacterLimit else {
+      return payload.text
     }
 
-    return "\(trimmed.shortened(to: textPreviewCharacterLimit))\n\n[内容过长，预览仅显示前 \(textPreviewCharacterLimit) 字；粘贴仍使用完整文本。]"
+    return "\(payload.text.shortened(to: textPreviewCharacterLimit))\n\n[内容过长，预览仅显示前 \(textPreviewCharacterLimit) 字；粘贴仍使用完整文本。]"
   }
 
   nonisolated private static func stripHTML(_ html: String) -> String {
@@ -679,28 +707,43 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
   }
 
-  nonisolated private static func loadFilePreviewImage(itemID: String) async -> NSImage? {
+  nonisolated private static func loadFilePreview(itemID: String, scale: CGFloat) async -> FilePreviewPayload {
     guard let item = ClipboardCoreStore.shared.item(id: itemID),
-          let content = item.contents.first(where: { $0.pasteboardType == ClipboardContentType.fileURL }),
-          let data = ClipboardCoreStore.shared.data(for: content),
-          let text = String(data: data, encoding: .utf8),
-          let url = fileURLs(from: text).first else {
-      return nil
+          !item.contents.isEmpty else {
+      return FilePreviewPayload(text: "文件", image: nil)
     }
 
-    if let thumbnail = await quickLookThumbnail(for: url) {
-      return thumbnail
+    let urls = item.contents
+      .filter { $0.pasteboardType == ClipboardContentType.fileURL }
+      .compactMap { content -> URL? in
+        guard let data = ClipboardCoreStore.shared.data(for: content),
+              let text = String(data: data, encoding: .utf8) else {
+          return nil
+        }
+        return fileURLs(from: text).first
+      }
+
+    guard let firstURL = urls.first else {
+      return FilePreviewPayload(text: filePreviewText(item.displayText), image: nil)
     }
 
-    return NSWorkspace.shared.icon(forFile: url.path)
+    let text = filePreviewText(urls: urls)
+    if let thumbnail = await quickLookThumbnail(for: firstURL, scale: scale) {
+      return FilePreviewPayload(text: text, image: thumbnail)
+    }
+
+    let icon = await MainActor.run {
+      NSWorkspace.shared.icon(forFile: firstURL.path)
+    }
+    return FilePreviewPayload(text: text, image: icon)
   }
 
-  nonisolated private static func quickLookThumbnail(for url: URL) async -> NSImage? {
+  nonisolated private static func quickLookThumbnail(for url: URL, scale: CGFloat) async -> NSImage? {
     await withCheckedContinuation { continuation in
       let request = QLThumbnailGenerator.Request(
         fileAt: url,
         size: CGSize(width: 256, height: 256),
-        scale: NSScreen.main?.backingScaleFactor ?? 2,
+        scale: scale,
         representationTypes: [.thumbnail, .icon]
       )
       QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, _ in
@@ -721,6 +764,19 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     return paths.isEmpty ? "文件" : paths.joined(separator: "\n")
   }
 
+  nonisolated private static func filePreviewText(urls: [URL]) -> String {
+    guard !urls.isEmpty else {
+      return "文件"
+    }
+
+    let paths = urls.map(\.path)
+    if paths.count == 1 {
+      return paths[0]
+    }
+
+    return "\(paths.count) 个文件\n" + paths.prefix(20).joined(separator: "\n")
+  }
+
   nonisolated private static func fileURLs(from value: String) -> [URL] {
     value
       .split(separator: "\n")
@@ -735,6 +791,22 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     ClipboardContentType.heic
   ]
   nonisolated private static let textPreviewCharacterLimit = 200_000
+  nonisolated private static let textPreviewFullReadByteLimit = 1_000_000
+  nonisolated private static let textPreviewPrefixByteLimit = 800_000
+
+  nonisolated private struct TextPreviewPayload: Sendable {
+    var text: String
+    var isTruncated: Bool
+
+    var characterCount: Int {
+      text.count
+    }
+  }
+
+  nonisolated private struct FilePreviewPayload: Sendable {
+    var text: String
+    var image: NSImage?
+  }
 
   @objc
   private func doubleClickItem() {

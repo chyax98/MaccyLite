@@ -104,7 +104,7 @@ Preview:
 
 - List items use lightweight display text.
 - Images are not decoded in the database hot path.
-- Runtime App image capture is removed; old image records keep metadata only.
+- Runtime App captures images by default; list rendering stays metadata-first, preview generates bounded thumbnails, and daily export writes image metadata plus asset paths.
 
 Runtime sampling:
 

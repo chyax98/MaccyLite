@@ -320,8 +320,16 @@ require_text(
   "QuickLookThumbnailing",
   "previewImageView",
   "loadPreviewImage",
-  "loadFilePreviewImage",
+  "loadFilePreview",
   "filePreviewText",
+)
+require_text(
+  "docs/productization-acceptance-matrix.md",
+  "复制文本、HTML、RTF、多文件 URL、图片，图片右侧缩略图预览",
+)
+require_text(
+  "docs/performance-triage.md",
+  "Runtime App captures images by default",
 )
 reject_text(
   "Maccy/Observables/AppState.swift",
