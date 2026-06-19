@@ -217,7 +217,7 @@ HTML/RTF:
 
 Images:
   default off or asset-only
-  optional thumbnail later
+  runtime App capture removed
 
 File URLs:
   store paths/URLs, not file contents
@@ -270,5 +270,5 @@ Next implementation steps:
    - `search_fts`
 3. Add a local benchmark command against real copied fixture data.
 4. Replace `History.load()` full fetch with latest-page query.
-5. Add lazy image thumbnail cache for file-backed images.
+5. Keep image handling out of the App runtime capture path.
 6. Add daily export over DB metadata + asset bodies, off the popup hot path.

@@ -14,8 +14,8 @@
   - 禁止重新引入 SwiftData/Vision/Sparkle/AppIntents/多语言资源/旧测试目录。
   - 禁止构建产物被 Git 跟踪。
 - `scripts/validate-performance.sh`
-  - 对 latest/search/thumbnail 查询设置 p95 阈值。
-  - mixed benchmark 必须产生 asset 文件和 pending thumbnail jobs。
+  - 对 latest/search 查询设置 p95 阈值。
+  - mixed benchmark 必须产生 asset 文件。
 - `scripts/validate-maintenance.sh`
   - 覆盖 `clipboard-maintenance` 的 health、reindex、search、export、assets、cleanup-assets smoke path。
   - 验证空库可初始化、空日报可生成、资产检查和清理命令可执行。
@@ -26,7 +26,7 @@
 
 - `ClipboardCoreStore` App 边界：
   - `ClipboardHistoryStore` / payload resolver / daily exporter 覆盖核心行为。
-  - Store 读写、搜索、pin、删除、缩略图、导出记录失败会写 error 日志；列表/搜索等读路径失败时降级为空结果，靠 App build 和人工验收确认 UX。
+  - Store 读写、搜索、pin、删除、导出记录失败会写 error 日志；列表/搜索等读路径失败时降级为空结果，靠 App build 和人工验收确认 UX。
 - `DailyExportScheduler` App 边界：
   - `DailyExportSchedulePolicy` 已覆盖 next fire date、catch-up、已导出判定。
   - 手动导出失败有设置页错误；定时/启动补导出失败有状态栏提示。
@@ -35,7 +35,7 @@
   - 类型选择/过滤规则已下沉到 `ClipboardPasteboardCaptureRules` 并覆盖空文本、富文本、禁用类型、动态类型、Microsoft link 和 sidecar 类型。
 - 性能基准回归：
   - 已有 benchmark 数字和 `scripts/validate-performance.sh` 阈值脚本。
-  - AppShell 已对 pasteboard capture 和 thumbnail generation 做运行时采样，慢样本打 warning。
+  - AppShell 已对 pasteboard capture 做运行时采样，慢样本打 warning。
   - 还需要人工运行时观察真实 App 来源的 warning 样本。
 
 ## 还需要人工验收
@@ -44,7 +44,7 @@
 
 - 菜单栏启动、快捷键唤起、面板焦点恢复。
 - Accessibility 未授权/已授权下的自动粘贴。
-- 真实 App 复制的 HTML/RTF/图片/多文件 URL。
+- 真实 App 复制的 HTML/RTF/多文件 URL。
 - Gatekeeper、本地签名、移动到 `/Applications` 后的启动行为。
 - 设置页每日导出操作是否顺手，失败时是否可理解。
 
@@ -53,7 +53,7 @@
 - 旧 Maccy 数据迁移已明确为不做；MaccyLite 从独立 Application Support 目录和空历史开始。
 - 每日导出失败会写日志；手动失败显示在设置页，定时/启动补导出失败会短暂显示在状态栏。
 - asset 缺失时 Core 能报错，App 会记录 warning 并短暂显示“复制失败”；还需要人工确认真实恢复体验。
-- 长期运行的内存、Timer、thumbnail backlog 还需要一轮实际使用观察。
+- 长期运行的内存和 Timer 还需要一轮实际使用观察。
 
 ## 当前下一步
 

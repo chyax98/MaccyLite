@@ -34,7 +34,7 @@ FINISHED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   printf '## Gate Summary\n\n'
   grep -E '^(non-gui validation check passed|maintenance validation passed|performance validation passed|productization validation passed)$' "${LOG_FILE}" || true
   printf '\n## Performance Summary\n\n'
-  grep -E '^(mode|items|runs|latest_p95_ms|cjk_search_p95_ms|token_search_p95_ms|pending_thumbnail_jobs_p95_ms|pending_thumbnail_jobs|asset_bytes)=' "${LOG_FILE}" || true
+  grep -E '^(mode|items|runs|latest_p95_ms|cjk_search_p95_ms|token_search_p95_ms|asset_bytes)=' "${LOG_FILE}" || true
   printf '\n## Full Log\n\n'
   printf '```text\n'
   cat "${LOG_FILE}"

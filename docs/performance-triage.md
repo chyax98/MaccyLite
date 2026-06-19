@@ -104,13 +104,11 @@ Preview:
 
 - List items use lightweight display text.
 - Images are not decoded in the database hot path.
-- Pending thumbnail jobs are generated in the background.
-- Preview loads thumbnail first, then falls back to background-generated preview data.
+- Runtime App image capture is removed; old image records keep metadata only.
 
 Runtime sampling:
 
 - Clipboard capture logs `types`, pasteboard read time, Core insert time, and total capture time through `com.local.MaccyLite.clipboard`.
-- Background thumbnail generation logs generated count and elapsed time.
 - Automatic paste checks Accessibility permission before posting Cmd+V; without permission it logs and returns instead of silently pretending to paste.
 - Selecting a history item resolves the full item and asset-backed pasteboard payload on a background task; the main thread only writes prepared data to `NSPasteboard`.
 
@@ -120,7 +118,7 @@ Daily export:
 - App timer exports yesterday at configured time.
 - Startup catch-up handles missed days.
 - Manual today/yesterday export is available from settings and runs on the export queue.
-- Markdown output includes content type, byte count, file URL, image dimensions, asset path, and thumbnail path.
+- Markdown output includes content type, byte count, file URL, image dimensions, and asset path.
 
 Maintenance:
 
@@ -158,7 +156,7 @@ Runtime smoke on local Debug app:
   - short text inline.
   - long text asset-backed with non-empty display/search prefix.
   - file URL inline.
-  - PNG asset-backed with width/height and thumbnail path.
+  - PNG old-data sample asset-backed with width/height.
 - Verified maintenance:
   - health report was healthy.
   - `search 数据库` returned text rows.

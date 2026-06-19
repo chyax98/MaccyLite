@@ -19,32 +19,19 @@ public struct ClipboardCapturePerformanceSample: Sendable, Equatable {
   }
 }
 
-public struct ThumbnailPerformanceSample: Sendable, Equatable {
-  public var generatedCount: Int
-  public var elapsedMilliseconds: Double
-
-  public init(generatedCount: Int, elapsedMilliseconds: Double) {
-    self.generatedCount = generatedCount
-    self.elapsedMilliseconds = elapsedMilliseconds
-  }
-}
-
 public struct ClipboardRuntimePerformancePolicy: Sendable, Equatable {
   public var pasteboardReadWarningMilliseconds: Double
   public var coreInsertWarningMilliseconds: Double
   public var totalCaptureWarningMilliseconds: Double
-  public var thumbnailWarningMilliseconds: Double
 
   public init(
     pasteboardReadWarningMilliseconds: Double = 50,
     coreInsertWarningMilliseconds: Double = 50,
-    totalCaptureWarningMilliseconds: Double = 100,
-    thumbnailWarningMilliseconds: Double = 100
+    totalCaptureWarningMilliseconds: Double = 100
   ) {
     self.pasteboardReadWarningMilliseconds = pasteboardReadWarningMilliseconds
     self.coreInsertWarningMilliseconds = coreInsertWarningMilliseconds
     self.totalCaptureWarningMilliseconds = totalCaptureWarningMilliseconds
-    self.thumbnailWarningMilliseconds = thumbnailWarningMilliseconds
   }
 
   public static let `default` = ClipboardRuntimePerformancePolicy()
@@ -53,9 +40,5 @@ public struct ClipboardRuntimePerformancePolicy: Sendable, Equatable {
     sample.readMilliseconds > pasteboardReadWarningMilliseconds ||
       sample.insertMilliseconds > coreInsertWarningMilliseconds ||
       sample.totalMilliseconds > totalCaptureWarningMilliseconds
-  }
-
-  public func thumbnailExceededWarningThreshold(_ sample: ThumbnailPerformanceSample) -> Bool {
-    sample.generatedCount > 0 && sample.elapsedMilliseconds > thumbnailWarningMilliseconds
   }
 }

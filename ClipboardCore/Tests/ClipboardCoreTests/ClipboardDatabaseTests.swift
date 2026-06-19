@@ -288,7 +288,6 @@ func dailyExporterWritesMarkdownAndRemovesOrphanAssets() throws {
   let fullText = "  长期保存的大文本内容，应该完整进入每日 Markdown 导出，不能只留下资产路径。\n```swift\nlet value = 1\n```\n\n"
   let data = Data(fullText.utf8)
   let asset = try assetStore.write(data, type: ClipboardContentType.plainText, copiedAt: copiedAt)
-  let thumbnail = try assetStore.write(try onePixelPNG(), type: ClipboardContentType.png, copiedAt: copiedAt)
   let orphan = try assetStore.write(Data("孤儿文件".utf8), type: ClipboardContentType.plainText, copiedAt: copiedAt)
 
   try database.insert(ClipboardItemDraft(
@@ -303,8 +302,7 @@ func dailyExporterWritesMarkdownAndRemovesOrphanAssets() throws {
         byteCount: data.count,
         inlineData: Data("长期保存".utf8),
         assetPath: asset.relativePath,
-        contentHash: asset.hash,
-        thumbnailPath: thumbnail.relativePath
+        contentHash: asset.hash
       )
     ]
   ))
@@ -326,7 +324,6 @@ func dailyExporterWritesMarkdownAndRemovesOrphanAssets() throws {
   #expect(markdown.contains(fullText))
   #expect(markdown.contains("````text"))
   #expect(markdown.contains(asset.relativePath))
-  #expect(markdown.contains(thumbnail.relativePath))
   #expect(try database.exportRecord(day: copiedAt)?.itemCount == 1)
 
   try "stale export".write(to: result.url, atomically: true, encoding: .utf8)
@@ -347,7 +344,6 @@ func dailyExporterWritesMarkdownAndRemovesOrphanAssets() throws {
   let removed = try exporter.removeOrphanAssets()
   #expect(removed == [orphan.relativePath])
   #expect(assetStore.exists(asset.relativePath))
-  #expect(assetStore.exists(thumbnail.relativePath))
   #expect(!assetStore.exists(orphan.relativePath))
 }
 
@@ -460,14 +456,6 @@ func dailyExporterWritesFileURLsAndImageMetadata() throws {
   #expect(markdown.contains("- 类型：\(ClipboardContentType.png)"))
   #expect(markdown.contains("- 图片尺寸：1x1"))
   #expect(markdown.contains(imageAsset.relativePath))
-}
-
-@Test
-func imageThumbnailGeneratorCreatesPNGThumbnail() throws {
-  let thumbnail = try #require(ImageThumbnailGenerator.pngThumbnail(from: try onePixelPNG(), maxPixelSize: 1))
-
-  #expect(thumbnail.starts(with: [0x89, 0x50, 0x4E, 0x47]))
-  #expect(ImageMetadataReader.read(from: thumbnail) == ImageMetadata(width: 1, height: 1))
 }
 
 @Test
@@ -1055,36 +1043,6 @@ func captureStoresImagesAsAssetsWithoutSearchText() throws {
 }
 
 @Test
-func databaseProvidesPendingThumbnailJobsAndMarksGeneratedThumbnails() throws {
-  let directory = try temporaryDirectory()
-  let assetStore = AssetStore(root: directory.appending(path: "Assets"))
-  let capture = ClipboardCapture(assetStore: assetStore)
-  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
-
-  let captured = try capture.makeItem(
-    contents: [
-      ClipboardRawContent(pasteboardType: ClipboardContentType.png, data: try onePixelPNG())
-    ],
-    sourceApp: "screenshot"
-  )
-  let item = try #require(captured)
-
-  try database.insert(item)
-
-  let jobs = try database.pendingThumbnailJobs()
-  #expect(jobs.count == 1)
-  #expect(jobs[0].pasteboardType == ClipboardContentType.png)
-  #expect(jobs[0].imageWidth == 1)
-  #expect(jobs[0].imageHeight == 1)
-
-  try database.markThumbnailGenerated(contentHash: jobs[0].contentHash, thumbnailPath: "thumbs/one.png")
-
-  #expect(try database.pendingThumbnailJobs().isEmpty)
-  let stored = try #require(try database.content(for: item.id, type: ClipboardContentType.png))
-  #expect(stored.thumbnailPath == "thumbs/one.png")
-}
-
-@Test
 func captureKeepsRTFButDoesNotIndexRichTextBody() throws {
   let directory = try temporaryDirectory()
   let capture = ClipboardCapture(assetStore: AssetStore(root: directory.appending(path: "Assets")))
@@ -1231,8 +1189,7 @@ func runtimePerformancePolicyDetectsSlowCaptureSamples() {
   let policy = ClipboardRuntimePerformancePolicy(
     pasteboardReadWarningMilliseconds: 10,
     coreInsertWarningMilliseconds: 20,
-    totalCaptureWarningMilliseconds: 30,
-    thumbnailWarningMilliseconds: 40
+    totalCaptureWarningMilliseconds: 30
   )
 
   #expect(!policy.captureExceededWarningThreshold(ClipboardCapturePerformanceSample(
@@ -1258,24 +1215,6 @@ func runtimePerformancePolicyDetectsSlowCaptureSamples() {
     readMilliseconds: 10,
     insertMilliseconds: 20,
     totalMilliseconds: 30.1
-  )))
-}
-
-@Test
-func runtimePerformancePolicyDetectsSlowThumbnailGeneration() {
-  let policy = ClipboardRuntimePerformancePolicy(thumbnailWarningMilliseconds: 40)
-
-  #expect(!policy.thumbnailExceededWarningThreshold(ThumbnailPerformanceSample(
-    generatedCount: 0,
-    elapsedMilliseconds: 100
-  )))
-  #expect(!policy.thumbnailExceededWarningThreshold(ThumbnailPerformanceSample(
-    generatedCount: 1,
-    elapsedMilliseconds: 40
-  )))
-  #expect(policy.thumbnailExceededWarningThreshold(ThumbnailPerformanceSample(
-    generatedCount: 1,
-    elapsedMilliseconds: 40.1
   )))
 }
 

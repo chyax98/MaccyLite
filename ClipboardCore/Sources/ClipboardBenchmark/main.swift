@@ -26,8 +26,6 @@ private let insertedAt = ContinuousClock.now
 var latestSamples: [Double] = []
 var cjkSearchSamples: [Double] = []
 var tokenSearchSamples: [Double] = []
-var pendingThumbnailSamples: [Double] = []
-var pendingThumbnails = 0
 
 for _ in 0..<options.runs {
   latestSamples.append(try measure {
@@ -41,10 +39,6 @@ for _ in 0..<options.runs {
   tokenSearchSamples.append(try measure {
     _ = try database.search("example", limit: 50)
   })
-
-  pendingThumbnailSamples.append(try measure {
-    pendingThumbnails = try database.pendingThumbnailJobs(limit: itemCount).count
-  })
 }
 
 private let assetBytes = byteCount(at: assetStore.root)
@@ -56,8 +50,6 @@ print("insert_ms=\(startedAt.duration(to: insertedAt).milliseconds)")
 printStats("latest", latestSamples)
 printStats("cjk_search", cjkSearchSamples)
 printStats("token_search", tokenSearchSamples)
-print("pending_thumbnail_jobs=\(pendingThumbnails)")
-printStats("pending_thumbnail_jobs", pendingThumbnailSamples)
 print("asset_bytes=\(assetBytes)")
 
 private struct BenchmarkOptions {

@@ -140,7 +140,7 @@ UI
 
 保留但降级：
 
-- 图片：保留记录和粘贴，预览走懒加载缩略图。
+- 图片：App 运行时不再捕获；Core 仅保留旧图片 asset metadata 的读取和导出能力。
 - HTML/RTF：保留原始数据用于粘贴，搜索只索引提取文本/前缀。
 - 文件 URL：只记录路径和元数据，不复制文件内容。
 
@@ -158,7 +158,7 @@ UI
 
 - 小文本 inline。
 - 大文本写文件，DB 存 prefix + assetPath。
-- 图片默认写文件，DB 存 hash、尺寸、路径，缩略图后台生成。
+- 图片不进入 App 运行时捕获路径。
 - HTML/RTF 原文写文件，搜索文本单独提取。
 - 忽略规则尽量先判断类型和来源，再读取重数据。
 
@@ -226,7 +226,7 @@ foreign_keys=ON
 目标：
 
 - 打开面板不全量加载。
-- 列表滚动不解码图片。
+- 列表滚动只展示轻量文本。
 - 搜索不阻塞输入。
 
 策略：
@@ -234,7 +234,6 @@ foreign_keys=ON
 - ViewModel 分页。
 - 列表只拿 `displayText`、type、copiedAt、sourceApp、pin。
 - preview 延迟加载。
-- 图片缩略图缓存。
 - 长文本永远截断显示。
 
 ### 6.5 粘贴
@@ -507,14 +506,6 @@ asset cleanup deterministic
 - 短 query fallback。
 - 不承诺全文语义搜索。
 
-### 图片预览
-
-处理：
-
-- 默认 asset-only。
-- 后台缩略图。
-- UI 不同步解码原图。
-
 ### SwiftData 到 GRDB 重写成本
 
 处理：
@@ -557,7 +548,6 @@ asset cleanup deterministic
   - file URL。
   - 图片尺寸。
   - asset path。
-  - thumbnail path。
 - 已实现 orphan asset 清理。
 - 已实现 pin / delete 核心 API。
 - 已实现 `ClipboardCapture` 构造层：
@@ -566,20 +556,9 @@ asset cleanup deterministic
   - legacy text type 归一化。
   - HTML 文本抽取。
   - RTF 降级记录但不默认索引正文。
-  - 图片 asset-only 捕获。
-  - 已实现图片 metadata：
+  - 旧图片 asset metadata：
     - ImageIO 读取图片宽高。
     - DB 记录 `image_width` / `image_height`。
-    - DB 记录 `thumbnail_path`。
-    - `pendingThumbnailJobs()` 暴露后台缩略图任务。
-    - `markThumbnailGenerated()` 标记缩略图完成。
-  - 已实现图片缩略图生成：
-    - `ImageThumbnailGenerator` 用 ImageIO 生成 PNG 缩略图。
-    - App 启动时后台处理 pending thumbnail jobs。
-    - 捕获新图片后后台处理小批缩略图任务。
-    - 列表 onAppear 懒加载缩略图，不同步解码原图。
-    - Preview 优先加载缩略图，缺失时后台生成临时预览图。
-    - orphan asset 清理会保留 `thumbnail_path` 引用。
 - 已新增 `clipboard-benchmark` 压测入口。
 - 已完成 10 万条 release benchmark，20-run 采样：
   - insert: `33908.846 ms`
@@ -588,13 +567,12 @@ asset cleanup deterministic
   - token common query p95: `0.08930239999999999 ms`
 - 已扩展 `clipboard-benchmark`：
   - `text` 模式：纯文本 100k。
-  - `mixed` 模式：短文本、长文本、HTML、RTF、文件 URL、PNG 图片。
+  - `mixed` 模式：短文本、长文本、HTML、RTF、文件 URL、PNG 旧数据样本。
 - 已完成 mixed 10k release benchmark，20-run 采样：
   - insert: `7887.974958 ms`
   - latest p95: `0.10635830000000021 ms`
   - 中文 common query p95: `0.23660450000000005 ms`
   - token common query p95: `0.19281905 ms`
-  - pending thumbnail jobs: `1666`
   - asset bytes: `114651068`
 - 已优化 common query 搜索路径：
   - 先查最近 5000 条 bounded LIKE。
@@ -668,7 +646,6 @@ asset cleanup deterministic
   - `DailyExportScheduler` 已改为调用该 Core 策略。
 - 已新增运行时性能采样：
   - 剪贴板捕获记录 pasteboard read / Core insert / total 耗时。
-  - 后台缩略图生成记录生成数量和耗时。
   - 日志 label：`com.local.MaccyLite.clipboard`。
 - 已修复真实运行态暴露的长 UTF-8 文本截断问题：
   - 旧逻辑按 `Data.prefix` 截断，可能切断中文 scalar，导致 `display_text` / `search_text` 为空。
@@ -676,9 +653,9 @@ asset cleanup deterministic
   - 已新增 `captureKeepsSearchTextWhenLongUTF8TextIsTruncated()` 覆盖。
 - 已完成真实 App 运行态 smoke：
   - Debug `MaccyLite.app` 去 quarantine、ad-hoc 签名后启动成功。
-  - 真实 NSPasteboard 捕获短文本、长 UTF-8 文本、file URL、PNG 图片。
+  - 真实 NSPasteboard 捕获短文本、长 UTF-8 文本、file URL。
   - 长文本自动 asset 化，DB 保留显示前缀和搜索文本。
-  - PNG 自动 asset 化，记录宽高和缩略图路径。
+  - App 运行时图片捕获入口已移除；旧 PNG 数据仍可通过 Core 读取宽高和导出 metadata。
   - 新 Application Support 目录使用 `Clipboard.sqlite` / `Assets` / `Exports`；不在启动路径做旧库迁移或删除。
   - `clipboard-maintenance health` 检查健康。
   - `clipboard-maintenance search` 可搜到中文长文本和 file URL token。
@@ -692,11 +669,8 @@ asset cleanup deterministic
   - pin 排序
   - 删除 item 并清理 FTS 索引
   - 多类型捕获
-  - HTML / RTF / 图片捕获策略
+  - HTML / RTF 捕获策略
   - 图片尺寸读取
-  - 缩略图任务查询与完成标记
-  - PNG 缩略图生成
-  - orphan 清理保留缩略图引用
   - 数据库健康检查
   - unicode61/trigram 搜索索引重建
   - pasteboard payload 还原：
@@ -723,4 +697,4 @@ asset cleanup deterministic
 - 做签名/交互环境下的最终手工验收：
   - 快捷键打开面板、搜索、选择、粘贴。
   - 设置页手动导出今天/昨天。
-  - 查看运行时 capture/thumbnail 采样日志。
+  - 查看运行时 capture 采样日志。

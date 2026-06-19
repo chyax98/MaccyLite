@@ -212,7 +212,7 @@ require_text(
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "latest page p95 <= `20 ms`",
   "CJK search p95 <= `50 ms`",
-  "mixed benchmark must create asset files and pending thumbnail jobs",
+  "mixed benchmark must create asset files",
 )
 require_text(
   "docs/development.md",
@@ -375,7 +375,6 @@ require_text(
   "latest_p95_ms",
   "cjk_search_p95_ms",
   "token_search_p95_ms",
-  "pending_thumbnail_jobs_p95_ms",
   "productization validation passed",
 )
 require_text(
@@ -553,13 +552,6 @@ for source_root in ["Maccy", "ClipboardCore"]:
     for forbidden_identity in ["com.p0deje", "org.p0deje"]:
       if forbidden_identity in text:
         fail(f"{path.relative_to(ROOT)} still contains upstream bundle identity {forbidden_identity}")
-
-for path in (ROOT / "Maccy").rglob("*.swift"):
-  if ".build" in path.parts or not path.is_file():
-    continue
-  text = path.read_text(errors="ignore")
-  if "generatePendingThumbnails" in text:
-    fail(f"{path.relative_to(ROOT)} must not generate thumbnails at app runtime")
 
 for path in (ROOT / "ClipboardCore/Tests").rglob("*.swift"):
   text = path.read_text(errors="ignore")

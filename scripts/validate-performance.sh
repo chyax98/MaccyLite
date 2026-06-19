@@ -8,7 +8,6 @@ MIXED_ITEMS="${MIXED_ITEMS:-3000}"
 RUNS="${RUNS:-10}"
 LATEST_P95_MAX_MS="${LATEST_P95_MAX_MS:-20}"
 SEARCH_P95_MAX_MS="${SEARCH_P95_MAX_MS:-50}"
-THUMBNAIL_P95_MAX_MS="${THUMBNAIL_P95_MAX_MS:-50}"
 
 run_benchmark() {
   local items="$1"
@@ -78,7 +77,6 @@ validate_common_query_metrics() {
   assert_number_le "${prefix}_latest_p95_ms" "$(metric "$output" latest_p95_ms)" "$LATEST_P95_MAX_MS"
   assert_number_le "${prefix}_cjk_search_p95_ms" "$(metric "$output" cjk_search_p95_ms)" "$SEARCH_P95_MAX_MS"
   assert_number_le "${prefix}_token_search_p95_ms" "$(metric "$output" token_search_p95_ms)" "$SEARCH_P95_MAX_MS"
-  assert_number_le "${prefix}_pending_thumbnail_jobs_p95_ms" "$(metric "$output" pending_thumbnail_jobs_p95_ms)" "$THUMBNAIL_P95_MAX_MS"
 }
 
 echo "Running text benchmark: items=$TEXT_ITEMS runs=$RUNS"
@@ -93,6 +91,5 @@ printf '%s\n' "$mixed_output"
 validate_run_identity "$mixed_output" mixed mixed "$MIXED_ITEMS"
 validate_common_query_metrics "$mixed_output" mixed
 assert_number_gt "mixed_asset_bytes" "$(metric "$mixed_output" asset_bytes)" 0
-assert_number_gt "mixed_pending_thumbnail_jobs" "$(metric "$mixed_output" pending_thumbnail_jobs)" 0
 
 echo "performance validation passed"

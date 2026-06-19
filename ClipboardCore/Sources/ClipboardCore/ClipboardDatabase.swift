@@ -132,10 +132,10 @@ public final class ClipboardDatabase: @unchecked Sendable {
           INSERT INTO clipboard_contents
             (
               item_id, pasteboard_type, byte_count, inline_data, asset_path, content_hash,
-              image_width, image_height, thumbnail_path
+              image_width, image_height
             )
           VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?)
           """,
           arguments: [
             item.id,
@@ -145,8 +145,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
             content.assetPath,
             content.contentHash,
             content.imageWidth,
-            content.imageHeight,
-            content.thumbnailPath
+            content.imageHeight
           ]
         )
       }
@@ -337,7 +336,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         sql = """
         SELECT
           pasteboard_type, byte_count, inline_data, asset_path, content_hash,
-          image_width, image_height, thumbnail_path
+          image_width, image_height
         FROM clipboard_contents
         WHERE item_id = ? AND pasteboard_type = ?
         ORDER BY id ASC
@@ -348,7 +347,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         sql = """
         SELECT
           pasteboard_type, byte_count, inline_data, asset_path, content_hash,
-          image_width, image_height, thumbnail_path
+          image_width, image_height
         FROM clipboard_contents
         WHERE item_id = ?
         ORDER BY id ASC
@@ -371,8 +370,6 @@ public final class ClipboardDatabase: @unchecked Sendable {
         db,
         sql: """
         SELECT asset_path AS path FROM clipboard_contents WHERE asset_path IS NOT NULL
-        UNION
-        SELECT thumbnail_path AS path FROM clipboard_contents WHERE thumbnail_path IS NOT NULL
         """
       )
       return Set(rows.compactMap { row in row["path"] as String? })
@@ -417,53 +414,6 @@ public final class ClipboardDatabase: @unchecked Sendable {
         """
       )
       try db.execute(sql: "DROP TABLE IF EXISTS temp.trim_candidates")
-    }
-  }
-
-  public func pendingThumbnailJobs(limit: Int = 100) throws -> [ImageThumbnailJob] {
-    try writer.read { db in
-      let rows = try Row.fetchAll(
-        db,
-        sql: """
-        SELECT content_hash, pasteboard_type, asset_path, image_width, image_height
-        FROM clipboard_contents
-        WHERE asset_path IS NOT NULL
-          AND thumbnail_path IS NULL
-          AND pasteboard_type IN (?, ?, ?, ?)
-        ORDER BY id ASC
-        LIMIT ?
-        """,
-        arguments: [
-          ClipboardContentType.png,
-          ClipboardContentType.tiff,
-          ClipboardContentType.jpeg,
-          ClipboardContentType.heic,
-          limit
-        ]
-      )
-
-      return rows.compactMap { row in
-        guard let assetPath = row["asset_path"] as String? else {
-          return nil
-        }
-
-        return ImageThumbnailJob(
-          contentHash: row["content_hash"],
-          pasteboardType: row["pasteboard_type"],
-          assetPath: assetPath,
-          imageWidth: row["image_width"],
-          imageHeight: row["image_height"]
-        )
-      }
-    }
-  }
-
-  public func markThumbnailGenerated(contentHash: String, thumbnailPath: String) throws {
-    try writer.write { db in
-      try db.execute(
-        sql: "UPDATE clipboard_contents SET thumbnail_path = ? WHERE content_hash = ?",
-        arguments: [thumbnailPath, contentHash]
-      )
     }
   }
 
@@ -597,8 +547,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         asset_path TEXT,
         content_hash TEXT NOT NULL,
         image_width INTEGER,
-        image_height INTEGER,
-        thumbnail_path TEXT
+        image_height INTEGER
       );
 
       CREATE INDEX clipboard_items_copied_at
@@ -618,9 +567,6 @@ public final class ClipboardDatabase: @unchecked Sendable {
 
       CREATE INDEX clipboard_contents_content_hash
       ON clipboard_contents(content_hash);
-
-      CREATE INDEX clipboard_contents_thumbnail_path
-      ON clipboard_contents(thumbnail_path);
 
       CREATE TABLE daily_exports (
         day TEXT PRIMARY KEY NOT NULL,
@@ -869,7 +815,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
       sql: """
       SELECT
         pasteboard_type, byte_count, inline_data, asset_path, content_hash,
-        image_width, image_height, thumbnail_path
+        image_width, image_height
       FROM clipboard_contents
       WHERE item_id = ?
       ORDER BY id ASC
@@ -919,8 +865,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
       assetPath: row["asset_path"],
       contentHash: row["content_hash"],
       imageWidth: row["image_width"],
-      imageHeight: row["image_height"],
-      thumbnailPath: row["thumbnail_path"]
+      imageHeight: row["image_height"]
     )
   }
 

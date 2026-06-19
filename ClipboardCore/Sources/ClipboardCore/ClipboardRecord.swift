@@ -8,7 +8,6 @@ public struct ClipboardContentDraft: Sendable {
   public var contentHash: String
   public var imageWidth: Int?
   public var imageHeight: Int?
-  public var thumbnailPath: String?
 
   public init(
     pasteboardType: String,
@@ -17,8 +16,7 @@ public struct ClipboardContentDraft: Sendable {
     assetPath: String?,
     contentHash: String,
     imageWidth: Int? = nil,
-    imageHeight: Int? = nil,
-    thumbnailPath: String? = nil
+    imageHeight: Int? = nil
   ) {
     self.pasteboardType = pasteboardType
     self.byteCount = byteCount
@@ -27,7 +25,6 @@ public struct ClipboardContentDraft: Sendable {
     self.contentHash = contentHash
     self.imageWidth = imageWidth
     self.imageHeight = imageHeight
-    self.thumbnailPath = thumbnailPath
   }
 }
 
@@ -98,7 +95,6 @@ public struct ClipboardStoredContent: Sendable, Equatable {
   public var contentHash: String
   public var imageWidth: Int?
   public var imageHeight: Int?
-  public var thumbnailPath: String?
 
   public init(
     pasteboardType: String,
@@ -107,37 +103,13 @@ public struct ClipboardStoredContent: Sendable, Equatable {
     assetPath: String?,
     contentHash: String,
     imageWidth: Int? = nil,
-    imageHeight: Int? = nil,
-    thumbnailPath: String? = nil
+    imageHeight: Int? = nil
   ) {
     self.pasteboardType = pasteboardType
     self.byteCount = byteCount
     self.inlineData = inlineData
     self.assetPath = assetPath
     self.contentHash = contentHash
-    self.imageWidth = imageWidth
-    self.imageHeight = imageHeight
-    self.thumbnailPath = thumbnailPath
-  }
-}
-
-public struct ImageThumbnailJob: Sendable, Equatable {
-  public var contentHash: String
-  public var pasteboardType: String
-  public var assetPath: String
-  public var imageWidth: Int?
-  public var imageHeight: Int?
-
-  public init(
-    contentHash: String,
-    pasteboardType: String,
-    assetPath: String,
-    imageWidth: Int?,
-    imageHeight: Int?
-  ) {
-    self.contentHash = contentHash
-    self.pasteboardType = pasteboardType
-    self.assetPath = assetPath
     self.imageWidth = imageWidth
     self.imageHeight = imageHeight
   }

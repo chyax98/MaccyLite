@@ -4,9 +4,9 @@
 
 | 目标 | 自动证据 | 人工证据 | 当前状态 |
 | --- | --- | --- | --- |
-| 核心剪贴板捕获稳定 | `ClipboardCapture`、`ClipboardPasteboardCaptureRules`、`ClipboardHistoryStore` 测试 | 真实 App 复制文本、HTML、RTF、图片、多文件 URL | 自动已覆盖，待人工 |
+| 核心剪贴板捕获稳定 | `ClipboardCapture`、`ClipboardPasteboardCaptureRules`、`ClipboardHistoryStore` 测试 | 真实 App 复制文本、HTML、RTF、多文件 URL，图片不会新增历史 | 自动已覆盖，待人工 |
 | 粘贴和自动粘贴稳定 | payload resolver 和大对象 round-trip 测试 | Accessibility 未授权/已授权、前台 App 焦点恢复、自动粘贴结果 | 自动已覆盖 payload，待人工 |
-| 大对象存储闭环 | 大文本 asset、图片 asset、thumbnail、missing asset、orphan cleanup 测试 | 大文本/大图复制不卡，缺 asset 时状态栏提示 | 自动已覆盖，待人工 |
+| 大对象存储闭环 | 大文本 asset、旧图片 asset metadata、missing asset、orphan cleanup 测试 | 大文本复制不卡，缺 asset 时状态栏提示 | 自动已覆盖，待人工 |
 | 搜索性能闭环 | FTS/短中文/URL token/多词搜索测试，`scripts/validate-performance.sh` | 面板打开和搜索体感不卡 | 自动已覆盖，待人工 |
 | 每日导出可用 | exporter、schedule policy、catch-up、file URL、图片 metadata、Markdown fence 测试 | 设置页启停、手动导出、打开目录、失败反馈、定时/补导出失败状态栏提示 | 自动已覆盖核心，待人工 |
 | 非必要功能清理 | `scripts/verify-non-gui-validation.py` 禁止旧路径回归 | 设置页和菜单无明显无效入口 | 自动已覆盖文件/target，待人工 |

@@ -178,10 +178,6 @@ public final class DailyExporter: @unchecked Sendable {
           lines.append("  - 资产：`\(assetPath)`")
         }
 
-        if let thumbnailPath = content.thumbnailPath {
-          lines.append("  - 缩略图：`\(thumbnailPath)`")
-        }
-
         if content.pasteboardType == ClipboardContentType.plainText,
            let text = try fullText(for: content),
            text != item.displayText {

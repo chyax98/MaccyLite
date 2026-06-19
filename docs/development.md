@@ -96,7 +96,7 @@ Core 逻辑以 SwiftPM 测试为准：
 swift test --package-path ClipboardCore
 ```
 
-当前 Core 测试覆盖存储、搜索、asset、导出、file URL / 图片 metadata 导出、缩略图、数据库维护、pasteboard payload 还原、每日导出调度策略、长 UTF-8 文本截断、短中文历史搜索、多文件 URL 捕获和 Core-backed History 边界。
+当前 Core 测试覆盖存储、搜索、asset、导出、file URL / 图片 metadata 导出、数据库维护、pasteboard payload 还原、每日导出调度策略、长 UTF-8 文本截断、短中文历史搜索、多文件 URL 捕获和 Core-backed History 边界。
 
 ## 依赖锁定
 

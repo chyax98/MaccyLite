@@ -26,17 +26,16 @@
 - [ ] 复制 HTML 内容，历史列表可展示可读文本，重新选择后保留 HTML payload。
 - [ ] 复制 RTF 内容，历史列表出现富文本条目，重新选择后保留 RTF payload。
 - [ ] 复制多文件 URL，历史列表保留文件信息，重新选择后 Finder/目标 App 能收到文件 URL。
-- [ ] 复制图片，列表不阻塞，预览显示缩略图或图片信息。
+- [ ] 复制图片不会新增历史记录。
 
 ## 运行时性能采样
 
-- [ ] 复制短文本、大文本、图片时，日志里出现 `Clipboard capture sample`。
+- [ ] 复制短文本、大文本时，日志里出现 `Clipboard capture sample`。
 - [ ] 正常样本为 debug；超过阈值时出现 warning。
 - [ ] warning 阈值：
   - pasteboard read > `50 ms`
   - Core insert > `50 ms`
   - capture total > `100 ms`
-  - thumbnail generation > `100 ms`
 - [ ] 如果出现 warning，记录复制来源 App、内容类型、`types/read_ms/insert_ms/total_ms`。
 
 ## 检索与列表
@@ -63,7 +62,7 @@
 - [ ] 手动导出失败时，设置页显示具体错误信息，不只显示通用失败。
 - [ ] 定时导出或启动补导出失败时，应记录 error，状态栏短暂显示“每日导出失败...”。
 - [ ] “打开导出目录”会创建并打开导出目录。
-- [ ] 导出的 Markdown 按日期生成，包含文本、文件 URL、图片元信息和 asset 路径。
+- [ ] 导出的 Markdown 按日期生成，包含文本、文件 URL、旧图片元信息和 asset 路径。
 
 ## 安装与长期运行
 
@@ -71,7 +70,7 @@
 - [ ] `scripts/build-local-app.sh` 生成的 `dist/local/MaccyLite.app` 可启动。
 - [ ] 放到 `/Applications` 后可启动。
 - [ ] 确认 MaccyLite 从空历史开始，不迁移旧 Maccy 历史和设置。
-- [ ] 持续运行观察没有明显内存增长、Timer 异常或 thumbnail backlog 堆积。
+- [ ] 持续运行观察没有明显内存增长或 Timer 异常。
 
 ## 失败处理
 
