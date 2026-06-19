@@ -4,7 +4,7 @@ struct Accessibility {
   static var allowed: Bool { AXIsProcessTrustedWithOptions(nil) }
 
   @discardableResult
-  static func check(prompt: Bool = true) -> Bool {
+  static func check(prompt: Bool = false) -> Bool {
     if allowed {
       return true
     }

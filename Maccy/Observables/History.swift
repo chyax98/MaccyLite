@@ -178,11 +178,11 @@ class History {
 
   @MainActor
   private func checkAccessibilityForPaste() -> Bool {
-    if Accessibility.check() {
+    if Accessibility.allowed {
       return true
     }
 
-    AppState.shared.appDelegate?.showTransientStatus("需要辅助功能权限才能自动粘贴")
+    AppState.shared.appDelegate?.showTransientStatus("辅助功能权限未对当前版本生效")
     return false
   }
 

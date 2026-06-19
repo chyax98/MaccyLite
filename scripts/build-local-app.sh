@@ -8,6 +8,7 @@ APP_NAME="MaccyLite.app"
 BUILT_APP="${DERIVED_DATA}/Build/Products/Release/${APP_NAME}"
 OUTPUT_APP="${OUTPUT_DIR}/${APP_NAME}"
 PLIST_BUDDY="/usr/libexec/PlistBuddy"
+LOCAL_SIGNING_IDENTITY="${MACCYLITE_CODESIGN_IDENTITY:-}"
 
 cd "${ROOT}"
 
@@ -32,7 +33,22 @@ fi
 
 ditto "${BUILT_APP}" "${OUTPUT_APP}"
 
-codesign --force --deep --sign - "${OUTPUT_APP}"
+if [[ -z "${LOCAL_SIGNING_IDENTITY}" ]]; then
+  LOCAL_SIGNING_IDENTITY="$(
+    security find-identity -v -p codesigning 2>/dev/null \
+      | sed -n 's/.*"\(Apple Development[^"]*\)".*/\1/p' \
+      | head -1
+  )"
+fi
+
+if [[ -n "${LOCAL_SIGNING_IDENTITY}" ]]; then
+  echo "Signing with identity: ${LOCAL_SIGNING_IDENTITY}" >&2
+  codesign --force --deep --sign "${LOCAL_SIGNING_IDENTITY}" "${OUTPUT_APP}"
+else
+  echo "warning: no stable code signing identity found; using ad-hoc signing." >&2
+  echo "warning: macOS Accessibility permission may need to be re-granted after each rebuild." >&2
+  codesign --force --deep --sign - "${OUTPUT_APP}"
+fi
 xattr -dr com.apple.quarantine "${OUTPUT_APP}" 2>/dev/null || true
 codesign --verify --deep --strict "${OUTPUT_APP}"
 

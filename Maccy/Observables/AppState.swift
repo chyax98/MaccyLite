@@ -24,8 +24,9 @@ final class AppState {
     if preferencesWindowController == nil {
       preferencesWindowController = NSWindowController(window: PreferencesWindow())
     }
+    NSApp.activate(ignoringOtherApps: true)
     preferencesWindowController?.showWindow(nil)
-    preferencesWindowController?.window?.orderFrontRegardless()
+    preferencesWindowController?.window?.makeKeyAndOrderFront(nil)
   }
 
   func quit() {
@@ -41,6 +42,7 @@ private final class PreferencesWindow: NSWindow {
   private let textCapture = NSButton(checkboxWithTitle: "记录文本、HTML、RTF", target: nil, action: nil)
   private let historySizeField = NSTextField()
   private let hotKeyField = HotKeyRecorderField()
+  private let accessibilityStatusLabel = NSTextField(labelWithString: "")
   private let exportDirectoryLabel = NSTextField(wrappingLabelWithString: "")
 
   init() {
@@ -56,6 +58,11 @@ private final class PreferencesWindow: NSWindow {
     center()
     configure()
     loadDefaults()
+  }
+
+  override func becomeKey() {
+    super.becomeKey()
+    refreshAccessibilityStatus()
   }
 
   private func configure() {
@@ -90,7 +97,9 @@ private final class PreferencesWindow: NSWindow {
     hotKeyField.onChange = { keyCode, modifiers in
       AppPreferences.popupHotKeyKeyCode = keyCode
       AppPreferences.popupHotKeyModifiers = modifiers
-      HotKeyManager.shared.start()
+      if !HotKeyManager.shared.start() {
+        NSSound.beep()
+      }
     }
 
     stack.addArrangedSubview(sectionTitle("核心设置"))
@@ -104,6 +113,14 @@ private final class PreferencesWindow: NSWindow {
       "关闭时按 Enter 只复制到剪贴板；开启后会自动粘贴到当前正在使用的 App，需要系统辅助功能权限。",
       to: stack
     )
+    let accessibilityRow = NSStackView()
+    accessibilityRow.orientation = .horizontal
+    accessibilityRow.spacing = 8
+    accessibilityRow.alignment = .centerY
+    accessibilityStatusLabel.textColor = .secondaryLabelColor
+    accessibilityRow.addArrangedSubview(accessibilityStatusLabel)
+    accessibilityRow.addArrangedSubview(NSButton(title: "打开辅助功能设置", target: self, action: #selector(openAccessibilitySettings)))
+    stack.addArrangedSubview(accessibilityRow)
     addSetting(
       removeFormatting,
       "开启后默认只写入纯文本，适合从网页或富文本编辑器复制内容后粘贴到对话框。",
@@ -177,6 +194,7 @@ private final class PreferencesWindow: NSWindow {
     let enabled = AppPreferences.enabledPasteboardTypes
     fileCapture.state = enabled.isDisjoint(with: StorageType.files.types) ? .off : .on
     textCapture.state = enabled.isDisjoint(with: StorageType.text.types) ? .off : .on
+    refreshAccessibilityStatus()
     refreshExportDirectoryLabel()
   }
 
@@ -234,6 +252,19 @@ private final class PreferencesWindow: NSWindow {
     DailyExportScheduler.shared.reschedule()
   }
 
+  @objc
+  private func openAccessibilitySettings() {
+    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+      NSWorkspace.shared.open(url)
+    }
+  }
+
+  private func refreshAccessibilityStatus() {
+    accessibilityStatusLabel.stringValue = Accessibility.allowed
+      ? "辅助功能：已对当前版本生效"
+      : "辅助功能：未对当前版本生效"
+  }
+
   private func refreshExportDirectoryLabel() {
     let path = ClipboardCoreStore.shared.exportDirectory.path
     let suffix = AppPreferences.dailyExportDirectoryPath == nil ? "（默认）" : "（自定义）"
@@ -270,6 +301,8 @@ private final class HotKeyRecorderField: NSTextField {
   var onChange: ((UInt32, UInt32) -> Void)?
   private var keyCode: UInt32 = UInt32(kVK_ANSI_C)
   private var modifiers: UInt32 = UInt32(optionKey)
+  private var keyMonitor: Any?
+  private var isRecording = false
 
   init() {
     super.init(frame: NSRect(x: 0, y: 0, width: 160, height: 28))
@@ -290,11 +323,66 @@ private final class HotKeyRecorderField: NSTextField {
     true
   }
 
+  deinit {
+    stopRecording()
+  }
+
+  override func becomeFirstResponder() -> Bool {
+    startRecording()
+    return true
+  }
+
+  override func resignFirstResponder() -> Bool {
+    stopRecording()
+    return true
+  }
+
   override func mouseDown(with event: NSEvent) {
     window?.makeFirstResponder(self)
+    startRecording()
   }
 
   override func keyDown(with event: NSEvent) {
+    record(event)
+  }
+
+  func setHotKey(keyCode: UInt32, modifiers: UInt32) {
+    self.keyCode = keyCode
+    self.modifiers = modifiers
+    stringValue = "\(Self.modifierDescription(modifiers))\(Self.keyName(Int(keyCode)))"
+  }
+
+  private func startRecording() {
+    guard !isRecording else {
+      return
+    }
+
+    isRecording = true
+    HotKeyManager.shared.stop()
+    stringValue = "按新的快捷键"
+    keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+      guard let self, self.window?.firstResponder === self else {
+        return event
+      }
+
+      self.record(event)
+      return nil
+    }
+  }
+
+  private func stopRecording() {
+    if let keyMonitor {
+      NSEvent.removeMonitor(keyMonitor)
+      self.keyMonitor = nil
+    }
+    isRecording = false
+    stringValue = "\(Self.modifierDescription(modifiers))\(Self.keyName(Int(keyCode)))"
+    if !HotKeyManager.shared.start() {
+      NSSound.beep()
+    }
+  }
+
+  private func record(_ event: NSEvent) {
     let carbonModifiers = Self.carbonModifiers(from: event.modifierFlags)
     guard carbonModifiers != 0, !Self.modifierOnlyKeyCodes.contains(Int(event.keyCode)) else {
       NSSound.beep()
@@ -303,12 +391,7 @@ private final class HotKeyRecorderField: NSTextField {
 
     setHotKey(keyCode: UInt32(event.keyCode), modifiers: carbonModifiers)
     onChange?(keyCode, modifiers)
-  }
-
-  func setHotKey(keyCode: UInt32, modifiers: UInt32) {
-    self.keyCode = keyCode
-    self.modifiers = modifiers
-    stringValue = "\(Self.modifierDescription(modifiers))\(Self.keyName(Int(keyCode)))"
+    window?.makeFirstResponder(nil)
   }
 
   private static func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
