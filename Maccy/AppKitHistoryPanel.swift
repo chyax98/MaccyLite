@@ -479,17 +479,12 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       return
     }
 
-    showPreviewText("正在载入文本...")
-    previewTask = Task.detached(priority: .utility) {
-      let text = Self.loadTextPreview(itemID: item.id, fallback: item.displayText)
-      await MainActor.run {
-        guard requestID == self.previewRequestID else { return }
-        self.showPreviewTextDocument(
-          text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "没有可预览内容" : text.shortened(to: 20_000),
-          info: Self.infoText(for: item)
-        )
-      }
-    }
+    let text = Self.loadTextPreview(itemID: item.id, fallback: item.displayText)
+    guard requestID == previewRequestID else { return }
+    showPreviewTextDocument(
+      Self.previewText(text),
+      info: Self.infoText(for: item)
+    )
   }
 
   private func showPreviewImage(_ image: NSImage, text: String? = nil) {
@@ -622,6 +617,19 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     return fallback
   }
 
+  nonisolated private static func previewText(_ text: String) -> String {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+      return "没有可预览内容"
+    }
+
+    guard trimmed.count > textPreviewCharacterLimit else {
+      return trimmed
+    }
+
+    return "\(trimmed.shortened(to: textPreviewCharacterLimit))\n\n[内容过长，预览仅显示前 \(textPreviewCharacterLimit) 字；粘贴仍使用完整文本。]"
+  }
+
   nonisolated private static func stripHTML(_ html: String) -> String {
     var result = ""
     result.reserveCapacity(min(html.count, 20_000))
@@ -726,6 +734,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     ClipboardContentType.jpeg,
     ClipboardContentType.heic
   ]
+  nonisolated private static let textPreviewCharacterLimit = 200_000
 
   @objc
   private func doubleClickItem() {

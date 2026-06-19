@@ -1,4 +1,5 @@
 import Foundation
+import GRDB
 import Testing
 @testable import ClipboardCore
 
@@ -81,6 +82,54 @@ func databaseMergesDuplicateClipboardItems() throws {
   let stored = try #require(try database.item(id: first.id))
   #expect(stored.sourceApp == "second.app")
   #expect(stored.contents.count == 1)
+}
+
+@Test
+func databaseListAndSearchHideLegacyDuplicateFingerprints() throws {
+  let directory = try temporaryDirectory()
+  let path = directory.appending(path: "Clipboard.sqlite")
+  do {
+    let database = try ClipboardDatabase(path: path)
+    for (id, copiedAt, hash) in [
+      ("older", Date(timeIntervalSince1970: 1), "older-hash"),
+      ("newer", Date(timeIntervalSince1970: 2), "newer-hash")
+    ] {
+      let data = Data("重复展示兜底 token".utf8)
+      try database.insert(ClipboardItemDraft(
+        id: id,
+        copiedAt: copiedAt,
+        sourceApp: nil,
+        primaryType: ClipboardContentType.plainText,
+        displayText: "重复展示兜底 token",
+        searchText: "重复展示兜底 token",
+        contents: [
+          ClipboardContentDraft(
+            pasteboardType: ClipboardContentType.plainText,
+            byteCount: data.count,
+            inlineData: data,
+            assetPath: nil,
+            contentHash: hash
+          )
+        ]
+      ))
+    }
+  }
+
+  let queue = try DatabaseQueue(path: path.path)
+  try queue.write { db in
+    let fingerprint = try String.fetchOne(
+      db,
+      sql: "SELECT content_fingerprint FROM clipboard_items WHERE id = 'older'"
+    )
+    try db.execute(
+      sql: "UPDATE clipboard_items SET content_fingerprint = ? WHERE id = 'newer'",
+      arguments: [fingerprint]
+    )
+  }
+
+  let database = try ClipboardDatabase(path: path)
+  #expect(try database.latest().map(\.id) == ["newer"])
+  #expect(try database.search("token", limit: 10).map(\.id) == ["newer"])
 }
 
 @Test

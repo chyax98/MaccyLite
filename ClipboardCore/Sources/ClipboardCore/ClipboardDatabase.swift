@@ -227,6 +227,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         sql: """
         SELECT \(listItemColumns(alias: "i"))
         FROM clipboard_items i
+        WHERE \(visibleFingerprintPredicate(alias: "i"))
         ORDER BY is_pinned DESC, copied_at DESC
         LIMIT ? OFFSET ?
         """,
@@ -704,12 +705,15 @@ public final class ClipboardDatabase: @unchecked Sendable {
       sql: """
       SELECT \(listItemColumns(alias: "i"))
       FROM (
-        SELECT id, copied_at, source_app, primary_type, display_text, has_image, is_pinned, copy_count, search_text
+        SELECT
+          id, copied_at, source_app, primary_type, display_text, has_image,
+          is_pinned, copy_count, search_text, content_fingerprint
         FROM clipboard_items
         ORDER BY copied_at DESC
         LIMIT ?
       ) i
       WHERE search_text LIKE ? ESCAPE '\\'
+        AND \(visibleFingerprintPredicate(alias: "i"))
       ORDER BY
         CASE
           WHEN search_text = ? COLLATE NOCASE THEN 0
@@ -737,6 +741,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
       FROM \(table) s
       JOIN clipboard_items i ON i.id = s.item_id
       WHERE s.text MATCH ?
+        AND \(visibleFingerprintPredicate(alias: "i"))
       ORDER BY
         CASE
           WHEN i.search_text = ? COLLATE NOCASE THEN 0
@@ -781,6 +786,30 @@ public final class ClipboardDatabase: @unchecked Sendable {
     \(prefix)has_image,
     \(prefix)is_pinned,
     \(prefix)copy_count
+    """
+  }
+
+  private func visibleFingerprintPredicate(alias: String) -> String {
+    """
+    (
+      \(alias).content_fingerprint IS NULL
+      OR \(alias).content_fingerprint = ''
+      OR NOT EXISTS (
+        SELECT 1
+        FROM clipboard_items newer
+        WHERE newer.content_fingerprint = \(alias).content_fingerprint
+          AND (
+            newer.is_pinned > \(alias).is_pinned
+            OR (
+              newer.is_pinned = \(alias).is_pinned
+              AND (
+                newer.copied_at > \(alias).copied_at
+                OR (newer.copied_at = \(alias).copied_at AND newer.id > \(alias).id)
+              )
+            )
+          )
+      )
+    )
     """
   }
 
