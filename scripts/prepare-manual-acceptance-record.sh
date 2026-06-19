@@ -29,9 +29,6 @@ replacements = {
   "- 构建命令：": "- 构建命令：`scripts/build-local-app.sh`",
   "- 自动证据：": "- 自动证据：`dist/validation/automatic-evidence.md`",
   "- App 路径：": "- App 路径：`dist/local/MaccyLite.app`",
-  "- 是否复制到 `/Applications`：": "- 是否复制到 `/Applications`：是 / 否",
-  "- 验收人：": "- 验收人：",
-  "- 总结论：": "- 总结论：通过 / 有问题",
 }
 
 lines = record_path.read_text().splitlines()

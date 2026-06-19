@@ -307,8 +307,16 @@ require_text(
   "git rev-parse --short HEAD",
   "dist/validation/automatic-evidence.md",
   "dist/local/MaccyLite.app",
-  "通过 / 有问题",
 )
+prepare_record_script = require_file("scripts/prepare-manual-acceptance-record.sh")
+for forbidden in [
+  "是否复制到 `/Applications`",
+  "验收人",
+  "总结论",
+  "通过 / 有问题",
+]:
+  if forbidden in prepare_record_script:
+    fail(f"scripts/prepare-manual-acceptance-record.sh must not overwrite manual field {forbidden}")
 require_text(
   "scripts/write-automatic-evidence.sh",
   "scripts/validate-productization.sh",
