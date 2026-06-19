@@ -21,6 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private var statusItemVisibilityObserver: NSKeyValueObservation?
+  private var transientStatusResetWorkItem: DispatchWorkItem?
 
   func applicationWillFinishLaunching(_ notification: Notification) { // swiftlint:disable:this function_body_length
     // Bridge FloatingPanel via AppDelegate.
@@ -142,6 +143,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       statusItem.button?.title = AppState.shared.menuIconText
     }
     synchronizeMenuIconText()
+  }
+
+  @MainActor
+  func showTransientStatus(_ title: String, duration: TimeInterval = 3) {
+    transientStatusResetWorkItem?.cancel()
+    statusItem.button?.title = title
+
+    let workItem = DispatchWorkItem { [weak self] in
+      guard let self else { return }
+      if Defaults[.showRecentCopyInMenuBar] {
+        self.statusItem.button?.title = AppState.shared.menuIconText
+      } else {
+        self.statusItem.button?.title = ""
+      }
+    }
+    transientStatusResetWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: workItem)
   }
 
   private func disableUnusedGlobalHotkeys() {

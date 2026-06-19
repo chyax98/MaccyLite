@@ -11,6 +11,11 @@ import Settings
 class History: ItemsContainer {
   static let shared = History()
   let logger = Logger(label: "com.local.MaccyLite")
+  private struct MissingHistoryItemError: LocalizedError {
+    var errorDescription: String? {
+      "找不到历史条目"
+    }
+  }
 
   var items: [HistoryItemDecorator] = [] {
     didSet {
@@ -330,26 +335,29 @@ class History: ItemsContainer {
     Task {
       let prepared = await Task.detached(priority: .userInitiated) {
         guard let storedItem = ClipboardCoreStore.shared.item(id: itemID) else {
-          return nil as (String?, [(type: String, data: Data)])?
+          return Result<(String?, [(type: String, data: Data)]), Error>.failure(MissingHistoryItemError())
         }
 
         do {
-          return (
+          return .success((
             storedItem.sourceApp,
             try ClipboardCoreStore.shared.pasteboardPayload(for: storedItem, removeFormatting: removeFormatting)
-          )
+          ))
         } catch {
-          return nil as (String?, [(type: String, data: Data)])?
+          return .failure(error)
         }
       }.value
 
-      guard let prepared else {
+      switch prepared {
+      case .success(let prepared):
+        Clipboard.shared.copy(contents: prepared.1, sourceApp: prepared.0)
+        if pasteAfter {
+          Clipboard.shared.paste()
+        }
+      case .failure(let error):
+        logger.warning("Failed to prepare clipboard payload for item \(itemID): \(error.localizedDescription)")
+        AppState.shared.appDelegate?.showTransientStatus("复制失败")
         return
-      }
-
-      Clipboard.shared.copy(contents: prepared.1, sourceApp: prepared.0)
-      if pasteAfter {
-        Clipboard.shared.paste()
       }
     }
   }
