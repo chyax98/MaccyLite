@@ -3,13 +3,12 @@ import Foundation
 
 struct StorageType {
   static let files = StorageType(types: [NSPasteboard.PasteboardType.fileURL])
-  static let images = StorageType(types: [NSPasteboard.PasteboardType.png, NSPasteboard.PasteboardType.tiff])
   static let text = StorageType(types: [
     NSPasteboard.PasteboardType.html,
     NSPasteboard.PasteboardType.rtf,
     NSPasteboard.PasteboardType.string
   ])
-  static let all = StorageType(types: files.types + images.types + text.types)
+  static let all = StorageType(types: files.types + text.types)
   static let defaultEnabled = StorageType(types: files.types + text.types)
 
   var types: [NSPasteboard.PasteboardType]
@@ -53,6 +52,7 @@ enum AppPreferences {
     get {
       let raw = defaults.stringArray(forKey: "enabledPasteboardTypes") ?? StorageType.defaultEnabled.types.map { $0.rawValue }
       return Set(raw.map { NSPasteboard.PasteboardType($0) })
+        .intersection(Set(StorageType.all.types))
     }
     set { set(newValue.map { $0.rawValue }, "enabledPasteboardTypes") }
   }
