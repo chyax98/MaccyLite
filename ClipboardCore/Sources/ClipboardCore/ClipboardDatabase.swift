@@ -70,12 +70,49 @@ public final class ClipboardDatabase: @unchecked Sendable {
   @discardableResult
   public func insert(_ item: ClipboardItemDraft) throws -> ClipboardStoredItem {
     try writer.write { db in
+      let fingerprint = itemFingerprint(item)
+      if !fingerprint.isEmpty, let existingID = try String.fetchOne(
+        db,
+        sql: """
+        SELECT id
+        FROM clipboard_items
+        WHERE content_fingerprint = ?
+        ORDER BY copied_at DESC
+        LIMIT 1
+        """,
+        arguments: [fingerprint]
+      ) {
+        try db.execute(
+          sql: """
+          UPDATE clipboard_items
+          SET copied_at = ?,
+              source_app = ?,
+              copy_count = copy_count + 1
+          WHERE id = ?
+          """,
+          arguments: [
+            item.copiedAt.timeIntervalSince1970,
+            item.sourceApp,
+            existingID
+          ]
+        )
+
+        guard let stored = try storedItem(id: existingID, db: db) else {
+          throw ClipboardDatabaseError.insertedItemMissing(existingID)
+        }
+
+        return stored
+      }
+
       try db.execute(
         sql: """
         INSERT INTO clipboard_items
-          (id, copied_at, source_app, primary_type, display_text, search_text, has_image, is_pinned, copy_count)
+          (
+            id, copied_at, source_app, primary_type, display_text, search_text,
+            content_fingerprint, has_image, is_pinned, copy_count
+          )
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, 0, 1)
+          (?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
         """,
         arguments: [
           item.id,
@@ -84,6 +121,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
           item.primaryType,
           item.displayText,
           item.searchText,
+          fingerprint,
           itemHasImage(item)
         ]
       )
@@ -623,6 +661,31 @@ public final class ClipboardDatabase: @unchecked Sendable {
       ])
     }
 
+    migrator.registerMigration("addClipboardItemContentFingerprint") { db in
+      try db.execute(sql: """
+      ALTER TABLE clipboard_items
+      ADD COLUMN content_fingerprint TEXT
+      """)
+
+      try db.execute(sql: """
+      UPDATE clipboard_items
+      SET content_fingerprint = (
+        SELECT group_concat(pasteboard_type || ':' || byte_count || ':' || content_hash, char(10))
+        FROM (
+          SELECT pasteboard_type, byte_count, content_hash
+          FROM clipboard_contents
+          WHERE item_id = clipboard_items.id
+          ORDER BY id ASC
+        )
+      )
+      """)
+
+      try db.execute(sql: """
+      CREATE INDEX clipboard_items_content_fingerprint
+      ON clipboard_items(content_fingerprint)
+      """)
+    }
+
     return migrator
   }
 
@@ -751,6 +814,12 @@ public final class ClipboardDatabase: @unchecked Sendable {
           ClipboardContentType.heic
         ].contains(content.pasteboardType)
     }
+  }
+
+  private func itemFingerprint(_ item: ClipboardItemDraft) -> String {
+    item.contents
+      .map { "\($0.pasteboardType):\($0.byteCount):\($0.contentHash)" }
+      .joined(separator: "\n")
   }
 
   private func ftsQuery(_ query: String, prefixTokens: Bool) -> String {

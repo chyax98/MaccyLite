@@ -32,6 +32,58 @@ func databaseInsertsListsAndSearchesClipboardItems() throws {
 }
 
 @Test
+func databaseMergesDuplicateClipboardItems() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+  let data = Data("重复复制内容".utf8)
+  let first = try database.insert(ClipboardItemDraft(
+    id: "first-copy",
+    copiedAt: Date(timeIntervalSince1970: 1),
+    sourceApp: "first.app",
+    primaryType: ClipboardContentType.plainText,
+    displayText: "重复复制内容",
+    searchText: "重复复制内容",
+    contents: [
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.plainText,
+        byteCount: data.count,
+        inlineData: data,
+        assetPath: nil,
+        contentHash: AssetStore.sha256(data)
+      )
+    ]
+  ))
+
+  let second = try database.insert(ClipboardItemDraft(
+    id: "second-copy",
+    copiedAt: Date(timeIntervalSince1970: 2),
+    sourceApp: "second.app",
+    primaryType: ClipboardContentType.plainText,
+    displayText: "重复复制内容",
+    searchText: "重复复制内容",
+    contents: [
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.plainText,
+        byteCount: data.count,
+        inlineData: data,
+        assetPath: nil,
+        contentHash: AssetStore.sha256(data)
+      )
+    ]
+  ))
+
+  #expect(second.id == first.id)
+  #expect(try database.latest().map(\.id) == [first.id])
+  let listItem = try #require(try database.latest().first)
+  #expect(listItem.copyCount == 2)
+  #expect(listItem.copiedAt == Date(timeIntervalSince1970: 2))
+
+  let stored = try #require(try database.item(id: first.id))
+  #expect(stored.sourceApp == "second.app")
+  #expect(stored.contents.count == 1)
+}
+
+@Test
 func databaseFindsShortChineseQueryOutsideRecentSearchScope() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
