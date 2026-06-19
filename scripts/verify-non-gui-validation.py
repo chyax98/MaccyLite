@@ -125,6 +125,13 @@ require_text(
   "不迁移旧历史和设置",
 )
 require_text(
+  "docs/benchmark-report.md",
+  "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
+  "latest page p95 <= `20 ms`",
+  "CJK search p95 <= `50 ms`",
+  "mixed benchmark must create asset files and pending thumbnail jobs",
+)
+require_text(
   "docs/development.md",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",

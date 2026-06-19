@@ -5,7 +5,7 @@
 Command:
 
 ```sh
-TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
 Result:
@@ -84,7 +84,7 @@ scripts/validate-performance.sh
 Full benchmark gate:
 
 ```sh
-TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
 Default thresholds:

@@ -50,6 +50,27 @@ assert_number_gt() {
   '
 }
 
+assert_string_eq() {
+  local name="$1"
+  local value="$2"
+  local expected="$3"
+  if [[ "$value" != "$expected" ]]; then
+    printf 'performance validation failed: %s=%s != %s\n' "$name" "$value" "$expected" >&2
+    exit 1
+  fi
+}
+
+validate_run_identity() {
+  local output="$1"
+  local prefix="$2"
+  local expected_mode="$3"
+  local expected_items="$4"
+
+  assert_string_eq "${prefix}_mode" "$(metric "$output" mode)" "$expected_mode"
+  assert_string_eq "${prefix}_items" "$(metric "$output" items)" "$expected_items"
+  assert_string_eq "${prefix}_runs" "$(metric "$output" runs)" "$RUNS"
+}
+
 validate_common_query_metrics() {
   local output="$1"
   local prefix="$2"
@@ -63,11 +84,13 @@ validate_common_query_metrics() {
 echo "Running text benchmark: items=$TEXT_ITEMS runs=$RUNS"
 text_output="$(run_benchmark "$TEXT_ITEMS" text)"
 printf '%s\n' "$text_output"
+validate_run_identity "$text_output" text text "$TEXT_ITEMS"
 validate_common_query_metrics "$text_output" text
 
 echo "Running mixed benchmark: items=$MIXED_ITEMS runs=$RUNS"
 mixed_output="$(run_benchmark "$MIXED_ITEMS" mixed)"
 printf '%s\n' "$mixed_output"
+validate_run_identity "$mixed_output" mixed mixed "$MIXED_ITEMS"
 validate_common_query_metrics "$mixed_output" mixed
 assert_number_gt "mixed_asset_bytes" "$(metric "$mixed_output" asset_bytes)" 0
 assert_number_gt "mixed_pending_thumbnail_jobs" "$(metric "$mixed_output" pending_thumbnail_jobs)" 0
