@@ -246,6 +246,9 @@ for source_root in ["Maccy", "ClipboardCore"]:
     ]:
       if re.search(rf"^\s*import\s+{re.escape(forbidden_import)}\b", text, re.MULTILINE):
         fail(f"{path.relative_to(ROOT)} imports removed framework {forbidden_import}")
+    for marker in ["TODO", "FIXME"]:
+      if marker in text:
+        fail(f"{path.relative_to(ROOT)} still contains {marker}")
 
 for path in (ROOT / "ClipboardCore/Tests").rglob("*.swift"):
   text = path.read_text(errors="ignore")

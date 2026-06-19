@@ -40,4 +40,18 @@ class FooterItem: Equatable, Identifiable, HasVisibility {
     self.suppressConfirmation = suppressConfirmation
     self.action = action
   }
+
+  @MainActor
+  func perform() {
+    guard confirmation != nil, let suppressConfirmation else {
+      action()
+      return
+    }
+
+    if suppressConfirmation.wrappedValue {
+      action()
+    } else {
+      showConfirmation = true
+    }
+  }
 }

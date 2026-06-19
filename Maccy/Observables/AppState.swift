@@ -61,12 +61,7 @@ class AppState {
         history.select(navigator.selection.first)
       }
     } else if let item = footer.selectedItem {
-      // TODO: Use item.suppressConfirmation, but it's not updated!
-      if item.confirmation != nil, Defaults[.suppressClearAlert] == false {
-        item.showConfirmation = true
-      } else {
-        item.action()
-      }
+      item.perform()
     } else {
       Clipboard.shared.copy(history.searchQuery)
       history.searchQuery = ""
