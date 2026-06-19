@@ -8,6 +8,8 @@
 scripts/validate-manual-acceptance-record.py
 ```
 
+校验会确认 `Git commit` 等于当前仓库 HEAD，`自动证据` 指向退出码为 0 的报告，`App 路径` 指向真实存在的 `.app`。
+
 ## Build
 
 - 日期：

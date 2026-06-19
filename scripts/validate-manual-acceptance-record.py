@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,7 +18,10 @@ def line_value(text: str, label: str) -> str:
   match = re.search(pattern, text, re.MULTILINE)
   if not match:
     fail(f"missing build field: {label}")
-  return match.group(1).strip()
+  value = match.group(1).strip()
+  if value.startswith("`") and value.endswith("`"):
+    value = value[1:-1].strip()
+  return value
 
 
 def require_filled(text: str, label: str) -> None:
@@ -46,6 +50,35 @@ def result_rows(text: str) -> list[tuple[str, str, str]]:
   return rows
 
 
+def resolve_record_path(value: str) -> Path:
+  path = Path(value).expanduser()
+  if not path.is_absolute():
+    path = ROOT / path
+  return path
+
+
+def current_commit() -> str:
+  try:
+    result = subprocess.run(
+      ["git", "rev-parse", "--short", "HEAD"],
+      cwd=ROOT,
+      check=True,
+      capture_output=True,
+      text=True,
+    )
+  except (FileNotFoundError, subprocess.CalledProcessError):
+    fail("cannot read current git commit")
+  return result.stdout.strip()
+
+
+def markdown_table_value(text: str, field: str) -> str:
+  pattern = rf"^\| {re.escape(field)} \| `([^`]+)` \|$"
+  match = re.search(pattern, text, re.MULTILINE)
+  if not match:
+    fail(f"automatic evidence is missing field: {field}")
+  return match.group(1).strip()
+
+
 def main() -> None:
   path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_RECORD
   if not path.is_file():
@@ -69,6 +102,37 @@ def main() -> None:
 
   if line_value(text, "总结论") != "通过":
     fail("summary conclusion must be 通过")
+
+  if line_value(text, "构建命令") != "scripts/build-local-app.sh":
+    fail("build command must be scripts/build-local-app.sh")
+
+  record_commit = line_value(text, "Git commit")
+  head_commit = current_commit()
+  if record_commit != head_commit:
+    fail(f"record git commit {record_commit} does not match current commit {head_commit}")
+
+  app_path = resolve_record_path(line_value(text, "App 路径"))
+  if not app_path.is_dir():
+    fail(f"app path does not exist: {app_path}")
+
+  automatic_evidence_path = resolve_record_path(line_value(text, "自动证据"))
+  if not automatic_evidence_path.is_file():
+    fail(f"automatic evidence file does not exist: {automatic_evidence_path}")
+
+  automatic_evidence = automatic_evidence_path.read_text(errors="ignore")
+  if markdown_table_value(automatic_evidence, "Exit status") != "0":
+    fail("automatic evidence exit status is not 0")
+  evidence_commit = markdown_table_value(automatic_evidence, "Commit")
+  if evidence_commit != record_commit:
+    fail(f"automatic evidence commit {evidence_commit} does not match record commit {record_commit}")
+  for marker in [
+    "non-gui validation check passed",
+    "maintenance validation passed",
+    "performance validation passed",
+    "productization validation passed",
+  ]:
+    if marker not in automatic_evidence:
+      fail(f"automatic evidence is missing marker: {marker}")
 
   rows = result_rows(text)
   if not rows:
