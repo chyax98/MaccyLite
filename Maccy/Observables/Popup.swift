@@ -73,7 +73,7 @@ class Popup {
   }
 
   func open(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
-    AppState.shared.appDelegate?.panel.open(height: height, at: popupPosition)
+    AppState.shared.appDelegate?.openPopup(height: height, at: popupPosition)
   }
 
   func reset() {
@@ -82,11 +82,11 @@ class Popup {
   }
 
   func close() {
-    AppState.shared.appDelegate?.panel.close()  // close() calls reset
+    AppState.shared.appDelegate?.closePopup()  // close() calls reset
   }
 
   func isClosed() -> Bool {
-    AppState.shared.appDelegate?.panel.isPresented != true
+    AppState.shared.appDelegate?.isPopupPresented() != true
   }
 
   func preferredHeight(for newHeight: CGFloat) -> CGFloat {
@@ -106,7 +106,7 @@ class Popup {
 
   func resize(height: CGFloat) {
     self.height = height + headerHeight + extraTopHeight + extraBottomHeight + footerHeight
-    AppState.shared.appDelegate?.panel.verticallyResize(to: preferredHeight(for: self.height))
+    AppState.shared.appDelegate?.resizePopup(to: preferredHeight(for: self.height))
     needsResize = false
   }
 

@@ -3,7 +3,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-  var panel: FloatingPanel<ContentView>!
+  var panel: FloatingPanel<ContentView>?
 
   @objc
   private lazy var statusItem: NSStatusItem = {
@@ -84,20 +84,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ aNotification: Notification) {
     disableUnusedGlobalHotkeys()
-
-    panel = FloatingPanel(
-      contentRect: NSRect(origin: .zero, size: Defaults[.windowSize]),
-      identifier: Bundle.main.bundleIdentifier ?? "com.local.MaccyLite",
-      statusBarButton: statusItem.button,
-      onClose: { AppState.shared.popup.reset() }
-    ) {
-      ContentView()
-    }
-
   }
 
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-    panel.toggle(height: AppState.shared.popup.height)
+    togglePopup(height: AppState.shared.popup.height)
     return true
   }
 
@@ -125,7 +115,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       }
     }
 
-    panel.toggle(height: AppState.shared.popup.height, at: .statusItem)
+    togglePopup(height: AppState.shared.popup.height, at: .statusItem)
+  }
+
+  func openPopup(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
+    popupPanel().open(height: height, at: popupPosition)
+  }
+
+  func togglePopup(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
+    popupPanel().toggle(height: height, at: popupPosition)
+  }
+
+  func closePopup() {
+    panel?.close()
+  }
+
+  func resizePopup(to height: CGFloat) {
+    panel?.verticallyResize(to: height)
+  }
+
+  func isPopupPresented() -> Bool {
+    panel?.isPresented == true
   }
 
   private func synchronizeMenuIconText() {
@@ -175,5 +185,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         KeyboardShortcuts.disable(name)
       }
     }
+  }
+
+  private func popupPanel() -> FloatingPanel<ContentView> {
+    if let panel {
+      return panel
+    }
+
+    let panel = FloatingPanel(
+      contentRect: NSRect(origin: .zero, size: Defaults[.windowSize]),
+      identifier: Bundle.main.bundleIdentifier ?? "com.local.MaccyLite",
+      statusBarButton: statusItem.button,
+      onClose: { AppState.shared.popup.reset() }
+    ) {
+      ContentView()
+    }
+    self.panel = panel
+    return panel
   }
 }
