@@ -38,10 +38,16 @@ MaccyLite 作为新应用处理，不迁移旧 Maccy 历史和设置；发布说
 
 ## 开发验证
 
-默认验证不启动 App，不抢桌面焦点：
+默认产品化验证不启动 App，不抢桌面焦点：
 
 ```sh
-scripts/validate-non-gui.sh
+scripts/validate-productization.sh
+```
+
+完整压测：
+
+```sh
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
 真实快捷键、面板焦点、Accessibility 自动粘贴只做人工验收，清单见 `docs/manual-acceptance.md`。
@@ -51,7 +57,6 @@ scripts/validate-non-gui.sh
 ## 维护命令
 
 ```sh
-cd ClipboardCore
 swift run --package-path ClipboardCore -c release clipboard-maintenance health /path/to/Clipboard.sqlite
 swift run --package-path ClipboardCore -c release clipboard-maintenance reindex /path/to/Clipboard.sqlite
 swift run --package-path ClipboardCore -c release clipboard-maintenance search /path/to/Clipboard.sqlite 关键词

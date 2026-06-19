@@ -35,8 +35,13 @@ This avoids startup-time migration risk and keeps the new SQLite/asset-store arc
 Run:
 
 ```sh
-scripts/validate-non-gui.sh
-scripts/validate-performance.sh
+scripts/validate-productization.sh
+```
+
+For the full benchmark gate, run:
+
+```sh
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
 Then complete `docs/manual-acceptance.md` in a real macOS session.

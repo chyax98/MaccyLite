@@ -62,10 +62,18 @@ for tracked_path in git_tracked_files():
     fail(f"generated file is tracked by git: {tracked_path}")
 
 require_text(
+  "README.md",
+  "scripts/validate-productization.sh",
+  "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
+  "docs/manual-acceptance.md",
+)
+require_text(
   "docs/release-notes.md",
   "Existing Maccy clipboard history is not migrated.",
   "Existing Maccy settings are not migrated.",
   "~/Library/Application Support/MaccyLite/",
+  "scripts/validate-productization.sh",
+  "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
 )
 require_text(
   "docs/productization-acceptance-matrix.md",
@@ -75,6 +83,12 @@ require_text(
   "scripts/validate-performance.sh",
   "FULL_PERFORMANCE=1",
   "不迁移旧历史和设置",
+)
+require_text(
+  "docs/development.md",
+  "scripts/validate-productization.sh",
+  "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
+  "scripts/validate-non-gui.sh",
 )
 require_text(
   "docs/manual-acceptance.md",

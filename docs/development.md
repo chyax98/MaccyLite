@@ -57,7 +57,19 @@ open /path/to/MaccyLite.app
 
 ## 当前测试策略
 
-完整的非 GUI 验证入口：
+完整的产品化自动验证入口：
+
+```sh
+scripts/validate-productization.sh
+```
+
+完整压测：
+
+```sh
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
+```
+
+只跑非 GUI 编译和测试：
 
 ```sh
 scripts/validate-non-gui.sh
@@ -93,7 +105,7 @@ scripts/validate-performance.sh
 默认数据集较小，用于本地快速回归；完整压测可以覆盖默认参数：
 
 ```sh
-TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
 数据库健康检查和重建索引：
