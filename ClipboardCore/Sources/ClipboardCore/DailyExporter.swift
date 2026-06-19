@@ -61,15 +61,27 @@ public final class DailyExporter: @unchecked Sendable {
     let itemCount = try database.itemCount(from: start, to: end)
     try FileManager.default.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
 
-    let url = exportDirectory.appending(path: "\(Self.dayKey(start)).md")
-    _ = FileManager.default.createFile(atPath: url.path, contents: nil)
-    let handle = try FileHandle(forWritingTo: url)
-    try handle.truncate(atOffset: 0)
+    let filename = "\(Self.dayKey(start)).md"
+    let url = exportDirectory.appending(path: filename)
+    let temporaryURL = exportDirectory.appending(path: ".\(filename).tmp-\(UUID().uuidString)")
+    _ = FileManager.default.createFile(atPath: temporaryURL.path, contents: nil)
+    let handle = try FileHandle(forWritingTo: temporaryURL)
+    var temporaryFileNeedsCleanup = true
+    var handleNeedsClose = true
     defer {
-      try? handle.close()
+      if handleNeedsClose {
+        try? handle.close()
+      }
+      if temporaryFileNeedsCleanup {
+        try? FileManager.default.removeItem(at: temporaryURL)
+      }
     }
 
     try writeMarkdown(day: start, itemCount: itemCount, from: start, to: end, to: handle)
+    try handle.close()
+    handleNeedsClose = false
+    try replaceExportFile(at: url, with: temporaryURL)
+    temporaryFileNeedsCleanup = false
     try database.recordExport(day: start, path: url.path, itemCount: itemCount)
 
     return DailyExportResult(day: start, url: url, itemCount: itemCount)
@@ -216,6 +228,14 @@ public final class DailyExporter: @unchecked Sendable {
     }
 
     return String(data: data, encoding: .utf8)
+  }
+
+  private func replaceExportFile(at destination: URL, with temporaryURL: URL) throws {
+    if FileManager.default.fileExists(atPath: destination.path) {
+      _ = try FileManager.default.replaceItemAt(destination, withItemAt: temporaryURL)
+    } else {
+      try FileManager.default.moveItem(at: temporaryURL, to: destination)
+    }
   }
 
   private static func dayKey(_ date: Date) -> String {

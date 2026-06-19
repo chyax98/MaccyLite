@@ -277,6 +277,17 @@ func dailyExporterWritesMarkdownAndRemovesOrphanAssets() throws {
   #expect(markdown.contains(thumbnail.relativePath))
   #expect(try database.exportRecord(day: copiedAt)?.itemCount == 1)
 
+  try "stale export".write(to: result.url, atomically: true, encoding: .utf8)
+  let rewritten = try exporter.export(day: copiedAt)
+  let rewrittenMarkdown = try String(contentsOf: rewritten.url, encoding: .utf8)
+  let exportFiles = try FileManager.default.contentsOfDirectory(
+    at: directory.appending(path: "Exports"),
+    includingPropertiesForKeys: nil
+  )
+  #expect(rewrittenMarkdown.contains(fullText))
+  #expect(!rewrittenMarkdown.contains("stale export"))
+  #expect(!exportFiles.contains { $0.lastPathComponent.contains(".tmp-") })
+
   let orphanPaths = try exporter.orphanAssetPaths()
   #expect(orphanPaths == [orphan.relativePath])
   #expect(assetStore.exists(orphan.relativePath))
