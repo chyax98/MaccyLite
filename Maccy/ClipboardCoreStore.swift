@@ -227,15 +227,12 @@ final class ClipboardCoreStore {
   }
 
   func data(for content: ClipboardStoredContent) -> Data? {
-    if let inlineData = content.inlineData {
-      return inlineData
+    if let assetPath = content.assetPath,
+       let assetData = try? assetStore.read(assetPath) {
+      return assetData
     }
 
-    guard let assetPath = content.assetPath else {
-      return nil
-    }
-
-    return try? assetStore.read(assetPath)
+    return content.inlineData
   }
 
   func dataPrefix(for content: ClipboardStoredContent, byteCount: Int) -> Data? {
