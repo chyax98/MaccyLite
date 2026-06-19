@@ -1,5 +1,6 @@
 import AppKit
 import ClipboardCore
+import ImageIO
 import QuickLookThumbnailing
 
 final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
@@ -512,6 +513,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewImageView.isHidden = true
     previewLabel.stringValue = info
     previewLabel.isHidden = false
+    previewTextScrollView.isHidden = false
     contentView?.layoutSubtreeIfNeeded()
     let textWidth = max(previewTextScrollView.contentSize.width, 240)
     previewTextView.frame = NSRect(origin: .zero, size: NSSize(width: textWidth, height: 1))
@@ -522,7 +524,6 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewTextView.string = text
     previewTextView.sizeToFit()
     previewTextView.scrollToBeginningOfDocument(nil)
-    previewTextScrollView.isHidden = false
   }
 
   private func sortLocalItems() {
@@ -648,7 +649,26 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       return nil
     }
 
-    return NSImage(data: data)
+    return thumbnailImage(from: data, maxPixelSize: 640) ?? NSImage(data: data)
+  }
+
+  nonisolated private static func thumbnailImage(from data: Data, maxPixelSize: Int) -> NSImage? {
+    guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+      return nil
+    }
+
+    let options: [CFString: Any] = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceShouldCacheImmediately: false,
+      kCGImageSourceThumbnailMaxPixelSize: maxPixelSize
+    ]
+
+    guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+      return nil
+    }
+
+    return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
   }
 
   nonisolated private static func loadFilePreviewImage(itemID: String) async -> NSImage? {
@@ -656,8 +676,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
           let content = item.contents.first(where: { $0.pasteboardType == ClipboardContentType.fileURL }),
           let data = ClipboardCoreStore.shared.data(for: content),
           let text = String(data: data, encoding: .utf8),
-          let url = URL(string: text),
-          url.isFileURL else {
+          let url = fileURLs(from: text).first else {
       return nil
     }
 
@@ -683,17 +702,22 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   }
 
   nonisolated private static func filePreviewText(_ value: String) -> String {
-    let lines = value
-      .split(separator: "\n")
-      .map(String.init)
-      .map { text -> String in
-        guard let url = URL(string: text), url.isFileURL else {
-          return text
-        }
-        return url.path
+    let lines = value.split(separator: "\n").map(String.init)
+    let paths = lines.map { text -> String in
+      guard let url = URL(string: text), url.isFileURL else {
+        return text
       }
+      return url.path
+    }
 
-    return lines.isEmpty ? "文件" : lines.joined(separator: "\n")
+    return paths.isEmpty ? "文件" : paths.joined(separator: "\n")
+  }
+
+  nonisolated private static func fileURLs(from value: String) -> [URL] {
+    value
+      .split(separator: "\n")
+      .compactMap { URL(string: String($0)) }
+      .filter(\.isFileURL)
   }
 
   nonisolated private static let imageTypes: Set<String> = [
