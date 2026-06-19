@@ -169,8 +169,8 @@ enum AppPreferences {
 
   static var windowSize: NSSize {
     get {
-      let width = double("windowSize.width", 450)
-      let height = double("windowSize.height", 800)
+      let width = max(double("windowSize.width", 980), 860)
+      let height = max(double("windowSize.height", 720), 620)
       return NSSize(width: width, height: height)
     }
     set {

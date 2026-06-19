@@ -9,6 +9,8 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private let previewContainer = NSView()
   private let previewStack = NSStackView()
   private let previewImageView = NSImageView()
+  private let previewTextScrollView = NSScrollView()
+  private let previewTextView = NSTextView()
   private let previewLabel = NSTextField(labelWithString: "")
   private let footerLabel = NSTextField(labelWithString: "")
   private let statusBarButton: NSStatusBarButton?
@@ -150,6 +152,12 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       let cell = NSTableCellView()
       cell.identifier = identifier
 
+      let imageView = NSImageView()
+      imageView.imageScaling = .scaleProportionallyDown
+      imageView.translatesAutoresizingMaskIntoConstraints = false
+      cell.imageView = imageView
+      cell.addSubview(imageView)
+
       let textField = NSTextField(labelWithString: "")
       textField.lineBreakMode = .byTruncatingTail
       textField.maximumNumberOfLines = 1
@@ -158,7 +166,11 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       cell.addSubview(textField)
 
       NSLayoutConstraint.activate([
-        textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 10),
+        imageView.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 10),
+        imageView.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+        imageView.widthAnchor.constraint(equalToConstant: 18),
+        imageView.heightAnchor.constraint(equalToConstant: 18),
+        textField.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 10),
         textField.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -10),
         textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
       ])
@@ -167,6 +179,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     }()
 
     cell.textField?.stringValue = itemTitles.indices.contains(row) ? itemTitles[row] : Self.titleText(for: items[row])
+    cell.imageView?.image = Self.icon(for: items[row])
     return cell
   }
 
@@ -205,15 +218,27 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewContainer.wantsLayer = true
     previewContainer.layer?.borderColor = NSColor.separatorColor.cgColor
     previewContainer.layer?.borderWidth = 1
-    previewContainer.layer?.cornerRadius = 6
 
     previewImageView.imageScaling = .scaleProportionallyUpOrDown
     previewImageView.translatesAutoresizingMaskIntoConstraints = false
     previewImageView.isHidden = true
 
+    previewTextView.isEditable = false
+    previewTextView.isSelectable = true
+    previewTextView.drawsBackground = false
+    previewTextView.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+    previewTextView.textContainerInset = NSSize(width: 12, height: 12)
+    previewTextView.translatesAutoresizingMaskIntoConstraints = false
+
+    previewTextScrollView.documentView = previewTextView
+    previewTextScrollView.hasVerticalScroller = true
+    previewTextScrollView.drawsBackground = false
+    previewTextScrollView.translatesAutoresizingMaskIntoConstraints = false
+    previewTextScrollView.isHidden = true
+
     previewLabel.textColor = .secondaryLabelColor
     previewLabel.lineBreakMode = .byTruncatingMiddle
-    previewLabel.maximumNumberOfLines = 3
+    previewLabel.maximumNumberOfLines = 8
     previewLabel.translatesAutoresizingMaskIntoConstraints = false
 
     previewStack.orientation = .vertical
@@ -221,6 +246,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewStack.spacing = 8
     previewStack.translatesAutoresizingMaskIntoConstraints = false
     previewStack.addArrangedSubview(previewImageView)
+    previewStack.addArrangedSubview(previewTextScrollView)
     previewStack.addArrangedSubview(previewLabel)
     previewContainer.addSubview(previewStack)
 
@@ -240,23 +266,24 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       searchField.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
 
       scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
-      scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-      scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-      scrollView.bottomAnchor.constraint(equalTo: previewContainer.topAnchor, constant: -8),
+      scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+      scrollView.widthAnchor.constraint(equalToConstant: 330),
+      scrollView.bottomAnchor.constraint(equalTo: footerLabel.topAnchor, constant: -6),
 
-      previewContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+      previewContainer.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+      previewContainer.leadingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: 10),
       previewContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
-      previewContainer.heightAnchor.constraint(equalToConstant: 170),
       previewContainer.bottomAnchor.constraint(equalTo: footerLabel.topAnchor, constant: -6),
 
       previewStack.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 10),
       previewStack.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -10),
-      previewStack.centerYAnchor.constraint(equalTo: previewContainer.centerYAnchor),
-      previewStack.topAnchor.constraint(greaterThanOrEqualTo: previewContainer.topAnchor, constant: 8),
-      previewStack.bottomAnchor.constraint(lessThanOrEqualTo: previewContainer.bottomAnchor, constant: -8),
+      previewStack.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 10),
+      previewStack.bottomAnchor.constraint(equalTo: previewContainer.bottomAnchor, constant: -10),
 
       previewImageView.widthAnchor.constraint(lessThanOrEqualTo: previewContainer.widthAnchor, constant: -20),
-      previewImageView.heightAnchor.constraint(lessThanOrEqualToConstant: 112),
+      previewImageView.heightAnchor.constraint(lessThanOrEqualToConstant: 320),
+      previewTextScrollView.widthAnchor.constraint(equalTo: previewStack.widthAnchor),
+      previewTextScrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 260),
       previewLabel.widthAnchor.constraint(equalTo: previewStack.widthAnchor),
 
       footerLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
@@ -284,9 +311,9 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
             return
           }
 
-        let listItems = trimmed.isEmpty
-          ? ClipboardCoreStore.shared.latest(limit: 200)
-          : ClipboardCoreStore.shared.search(trimmed, limit: 200)
+          let listItems = trimmed.isEmpty
+            ? ClipboardCoreStore.shared.latest(limit: 200)
+            : ClipboardCoreStore.shared.search(trimmed, limit: 200)
 
           continuation.resume(returning: (items: listItems, titles: listItems.map(Self.titleText(for:))))
         }
@@ -413,7 +440,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
         await MainActor.run {
           guard requestID == self.previewRequestID else { return }
           if let image {
-            self.showPreviewImage(image)
+            self.showPreviewImage(image, text: Self.infoText(for: item))
           } else {
             self.showPreviewText("图片预览不可用")
           }
@@ -430,20 +457,30 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
         await MainActor.run {
           guard requestID == self.previewRequestID else { return }
           if let image {
-            self.showPreviewImage(image, text: text)
+            self.showPreviewImage(image, text: "\(text)\n\n\(Self.infoText(for: item))")
           } else {
-            self.showPreviewText(text)
+            self.showPreviewText("\(text)\n\n\(Self.infoText(for: item))")
           }
         }
       }
       return
     }
 
-    let text = item.displayText.trimmingCharacters(in: .whitespacesAndNewlines)
-    showPreviewText(text.isEmpty ? "没有可预览内容" : text.shortened(to: 1_000))
+    showPreviewText("正在载入文本...")
+    previewTask = Task.detached(priority: .utility) {
+      let text = Self.loadTextPreview(itemID: item.id, fallback: item.displayText)
+      await MainActor.run {
+        guard requestID == self.previewRequestID else { return }
+        self.showPreviewTextDocument(
+          text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "没有可预览内容" : text.shortened(to: 20_000),
+          info: Self.infoText(for: item)
+        )
+      }
+    }
   }
 
   private func showPreviewImage(_ image: NSImage, text: String? = nil) {
+    previewTextScrollView.isHidden = true
     previewLabel.stringValue = text ?? ""
     previewLabel.isHidden = text == nil
     previewImageView.image = image
@@ -453,8 +490,18 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private func showPreviewText(_ text: String) {
     previewImageView.image = nil
     previewImageView.isHidden = true
+    previewTextScrollView.isHidden = true
     previewLabel.stringValue = text
     previewLabel.isHidden = false
+  }
+
+  private func showPreviewTextDocument(_ text: String, info: String) {
+    previewImageView.image = nil
+    previewImageView.isHidden = true
+    previewLabel.stringValue = info
+    previewLabel.isHidden = false
+    previewTextView.string = text
+    previewTextScrollView.isHidden = false
   }
 
   private func sortLocalItems() {
@@ -468,7 +515,109 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   }
 
   nonisolated private static func titleText(for item: ClipboardListItem) -> String {
-    item.displayText.replacingOccurrences(of: "\n", with: " ").shortened(to: 300)
+    let text = item.displayText.replacingOccurrences(of: "\n", with: " ")
+    if item.hasImage {
+      return text == "图片" ? "图片" : text.shortened(to: 120)
+    }
+    if item.primaryType == ClipboardContentType.fileURL {
+      return filePreviewText(item.displayText).shortened(to: 120)
+    }
+    return text.shortened(to: 160)
+  }
+
+  nonisolated private static func icon(for item: ClipboardListItem) -> NSImage? {
+    if item.hasImage {
+      return NSImage(systemSymbolName: "photo", accessibilityDescription: "图片")
+    }
+    if item.primaryType == ClipboardContentType.fileURL {
+      return NSImage(systemSymbolName: "doc", accessibilityDescription: "文件")
+    }
+    if item.isPinned {
+      return NSImage(systemSymbolName: "pin", accessibilityDescription: "固定")
+    }
+    return NSImage(systemSymbolName: "doc.text", accessibilityDescription: "文本")
+  }
+
+  nonisolated private static func infoText(for item: ClipboardListItem) -> String {
+    [
+      "来源：\(item.sourceApp ?? "未知")",
+      "类型：\(readableType(item))",
+      "字符：\(item.displayText.count)",
+      "时间：\(item.copiedAt.formatted(date: .numeric, time: .shortened))"
+    ].joined(separator: "\n")
+  }
+
+  nonisolated private static func readableType(_ item: ClipboardListItem) -> String {
+    if item.hasImage {
+      return "图片"
+    }
+    switch item.primaryType {
+    case ClipboardContentType.plainText, ClipboardContentType.legacyPlainText:
+      return "文本"
+    case ClipboardContentType.fileURL:
+      return "文件"
+    case ClipboardContentType.html:
+      return "HTML"
+    case ClipboardContentType.rtf:
+      return "富文本"
+    default:
+      return item.primaryType
+    }
+  }
+
+  nonisolated private static func loadTextPreview(itemID: String, fallback: String) -> String {
+    guard let item = ClipboardCoreStore.shared.item(id: itemID) else {
+      return fallback
+    }
+
+    let preferredTypes = [
+      ClipboardContentType.plainText,
+      ClipboardContentType.legacyPlainText,
+      ClipboardContentType.html,
+      ClipboardContentType.rtf
+    ]
+
+    for type in preferredTypes {
+      guard let content = item.contents.first(where: { $0.pasteboardType == type }),
+            let data = ClipboardCoreStore.shared.data(for: content) else {
+        continue
+      }
+
+      if type == ClipboardContentType.rtf,
+         let attributed = try? NSAttributedString(
+          data: data,
+          options: [.documentType: NSAttributedString.DocumentType.rtf],
+          documentAttributes: nil
+         ) {
+        return attributed.string
+      }
+
+      if let text = String(data: data, encoding: .utf8) {
+        return type == ClipboardContentType.html ? stripHTML(text) : text
+      }
+    }
+
+    return fallback
+  }
+
+  nonisolated private static func stripHTML(_ html: String) -> String {
+    var result = ""
+    result.reserveCapacity(min(html.count, 20_000))
+    var insideTag = false
+    for character in html {
+      if character == "<" {
+        insideTag = true
+        continue
+      }
+      if character == ">" {
+        insideTag = false
+        continue
+      }
+      if !insideTag {
+        result.append(character)
+      }
+    }
+    return result
   }
 
   nonisolated private static func loadPreviewImage(itemID: String) -> NSImage? {
