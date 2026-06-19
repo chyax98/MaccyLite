@@ -187,9 +187,13 @@ public final class ClipboardDatabase: @unchecked Sendable {
 
   public func deleteUnpinned() throws {
     try writer.write { db in
-      try db.execute(sql: "DELETE FROM clipboard_search WHERE item_id IN (SELECT id FROM clipboard_items WHERE is_pinned = 0)")
-      try db.execute(sql: "DELETE FROM clipboard_trigram WHERE item_id IN (SELECT id FROM clipboard_items WHERE is_pinned = 0)")
-      try db.execute(sql: "DELETE FROM clipboard_items WHERE is_pinned = 0")
+      try db.execute(sql: "DROP TABLE IF EXISTS temp.delete_candidates")
+      try db.execute(sql: "CREATE TEMP TABLE delete_candidates(id TEXT PRIMARY KEY) WITHOUT ROWID")
+      try db.execute(sql: "INSERT INTO delete_candidates(id) SELECT id FROM clipboard_items WHERE is_pinned = 0")
+      try db.execute(sql: "DELETE FROM clipboard_search WHERE item_id IN (SELECT id FROM delete_candidates)")
+      try db.execute(sql: "DELETE FROM clipboard_trigram WHERE item_id IN (SELECT id FROM delete_candidates)")
+      try db.execute(sql: "DELETE FROM clipboard_items WHERE id IN (SELECT id FROM delete_candidates)")
+      try db.execute(sql: "DROP TABLE IF EXISTS temp.delete_candidates")
     }
   }
 
@@ -255,38 +259,17 @@ public final class ClipboardDatabase: @unchecked Sendable {
     }
 
     return try writer.read { db in
-      let recent = try recentLikeSearch(db, query: trimmed, limit: limit)
-      if recent.count >= limit {
-        return recent
-      }
-
       if trimmed.count <= 2 {
-        return recent
+        return try recentLikeSearch(db, query: trimmed, limit: limit)
       }
 
-      let useTrigram = containsCJK(trimmed)
-      let table = useTrigram ? "clipboard_trigram" : "clipboard_search"
-      let expanded = try fetchListItems(
-        db,
-        sql: """
-        SELECT \(listItemColumns(alias: "i"))
-        FROM \(table) s
-        JOIN clipboard_items i ON i.id = s.item_id
-        WHERE s.text MATCH ?
-        ORDER BY
-          CASE
-            WHEN i.search_text = ? COLLATE NOCASE THEN 0
-            WHEN i.search_text LIKE ? ESCAPE '\\' THEN 1
-            WHEN i.search_text LIKE ? ESCAPE '\\' THEN 2
-            ELSE 3
-          END,
-          i.copied_at DESC
-        LIMIT ?
-        """,
-        arguments: [ftsQuery(trimmed, prefixTokens: !useTrigram), trimmed, prefixPattern(trimmed), likePattern(trimmed), limit]
-      )
+      let expanded = try ftsSearch(db, query: trimmed, limit: limit)
+      if expanded.count >= limit {
+        return expanded
+      }
 
-      return mergeSearchResults(primary: recent, secondary: expanded, limit: limit)
+      let recent = try recentLikeSearch(db, query: trimmed, limit: limit)
+      return mergeSearchResults(primary: expanded, secondary: recent, limit: limit)
     }
   }
 
@@ -737,6 +720,34 @@ public final class ClipboardDatabase: @unchecked Sendable {
       LIMIT ?
       """,
       arguments: [recentSearchScope, likePattern(query), query, prefixPattern(query), limit]
+    )
+  }
+
+  private func ftsSearch(
+    _ db: Database,
+    query: String,
+    limit: Int
+  ) throws -> [ClipboardListItem] {
+    let useTrigram = containsCJK(query)
+    let table = useTrigram ? "clipboard_trigram" : "clipboard_search"
+    return try fetchListItems(
+      db,
+      sql: """
+      SELECT \(listItemColumns(alias: "i"))
+      FROM \(table) s
+      JOIN clipboard_items i ON i.id = s.item_id
+      WHERE s.text MATCH ?
+      ORDER BY
+        CASE
+          WHEN i.search_text = ? COLLATE NOCASE THEN 0
+          WHEN i.search_text LIKE ? ESCAPE '\\' THEN 1
+          WHEN i.search_text LIKE ? ESCAPE '\\' THEN 2
+          ELSE 3
+        END,
+        i.copied_at DESC
+      LIMIT ?
+      """,
+      arguments: [ftsQuery(query, prefixTokens: !useTrigram), query, prefixPattern(query), likePattern(query), limit]
     )
   }
 

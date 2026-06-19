@@ -94,7 +94,13 @@ public struct ClipboardCapture: Sendable {
   }
 
   private func searchText(for contents: [ClipboardRawContent]) -> String {
-    contents
+    let hasPlainText = contents.contains { $0.pasteboardType == ClipboardContentType.plainText }
+    return contents
+      .filter { content in
+        guard hasPlainText else { return true }
+        return content.pasteboardType != ClipboardContentType.html &&
+          content.pasteboardType != ClipboardContentType.rtf
+      }
       .map { extractedText(from: $0.data, type: $0.pasteboardType) }
       .filter { !$0.isEmpty }
       .joined(separator: "\n")
@@ -117,14 +123,47 @@ public struct ClipboardCapture: Sendable {
   }
 
   private func stripHTML(_ html: String) -> String {
-    html
-      .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+    var text = ""
+    text.reserveCapacity(min(html.count, policy.richTextSearchTextLimit))
+    var isInsideTag = false
+    var previousWasWhitespace = false
+    var index = html.startIndex
+
+    while index < html.endIndex {
+      let character = html[index]
+
+      if character == "<" {
+        isInsideTag = true
+        appendSpace(to: &text, previousWasWhitespace: &previousWasWhitespace)
+      } else if character == ">" {
+        isInsideTag = false
+      } else if !isInsideTag {
+        if character.isWhitespace {
+          appendSpace(to: &text, previousWasWhitespace: &previousWasWhitespace)
+        } else {
+          text.append(character)
+          previousWasWhitespace = false
+        }
+      }
+
+      index = html.index(after: index)
+    }
+
+    return text
       .replacingOccurrences(of: "&nbsp;", with: " ")
       .replacingOccurrences(of: "&amp;", with: "&")
       .replacingOccurrences(of: "&lt;", with: "<")
       .replacingOccurrences(of: "&gt;", with: ">")
-      .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
       .trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  private func appendSpace(to text: inout String, previousWasWhitespace: inout Bool) {
+    guard !previousWasWhitespace, !text.isEmpty else {
+      return
+    }
+
+    text.append(" ")
+    previousWasWhitespace = true
   }
 
   private func utf8PrefixString(_ data: Data, limit: Int) -> String {

@@ -1100,7 +1100,7 @@ func captureBuildsItemFromMultiplePasteboardTypes() throws {
     contents: [
       ClipboardRawContent(
         pasteboardType: ClipboardContentType.html,
-        data: Data("<p>数据库 <strong>方案</strong></p>".utf8)
+        data: Data("<p>数据库 <strong>方案</strong> html-only-token</p>".utf8)
       ),
       ClipboardRawContent(
         pasteboardType: ClipboardContentType.plainText,
@@ -1115,7 +1115,8 @@ func captureBuildsItemFromMultiplePasteboardTypes() throws {
   #expect(item.sourceApp == "com.apple.Safari")
   #expect(item.primaryType == ClipboardContentType.plainText)
   #expect(item.displayText == "数据库方案")
-  #expect(item.searchText.contains("数据库方案"))
+  #expect(item.searchText == "数据库方案")
+  #expect(!item.searchText.contains("html-only-token"))
   #expect(item.contents.map(\.pasteboardType) == [
     ClipboardContentType.plainText,
     ClipboardContentType.html

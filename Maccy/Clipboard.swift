@@ -155,11 +155,13 @@ class Clipboard: @unchecked Sendable {
     // types - even the ones that are not present on the NSPasteboardItem.
     // See https://github.com/p0deje/Maccy/issues/241.
     let captureRules = captureRules
-    if captureRules.shouldIgnorePasteboard(types: Set((pasteboard.types ?? []).map(\.rawValue))) {
+    let pasteboardTypes = Set((pasteboard.types ?? []).map(\.rawValue))
+    if captureRules.shouldIgnorePasteboard(types: pasteboardTypes) {
       return
     }
 
-    if let sourceAppBundle = sourceApp?.bundleIdentifier, shouldIgnore(sourceAppBundle) {
+    let sourceAppBundle = sourceApp?.bundleIdentifier
+    if let sourceAppBundle, shouldIgnore(sourceAppBundle) {
       return
     }
 
@@ -168,8 +170,8 @@ class Clipboard: @unchecked Sendable {
     // - https://github.com/p0deje/Maccy/issues/78
     // - https://github.com/p0deje/Maccy/issues/472
     var coreContents = [ClipboardRawContent]()
-    let copiedAt = Date.now
     let regexps = ignoreRegexps()
+    let copiedAt = Date.now
     pasteboard.pasteboardItems?.forEach({ item in
       let itemTypes = Set(item.types)
       let hasRichTextPayload = hasRichTextPayload(itemTypes)
@@ -199,7 +201,6 @@ class Clipboard: @unchecked Sendable {
     }
 
     let pasteboardReadAt = ContinuousClock.now
-    let sourceAppBundle = sourceApp?.bundleIdentifier
     let logger = logger
 
     captureQueue.async { [weak self] in
