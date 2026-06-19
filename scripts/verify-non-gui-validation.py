@@ -165,6 +165,7 @@ require_text(
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/build-local-app.sh",
   "docs/manual-acceptance.md",
+  "docs/manual-acceptance-record.md",
 )
 require_text(
   "docs/release-notes.md",
@@ -201,6 +202,22 @@ require_text(
   "scripts/validate-maintenance.sh",
 )
 require_text(
+  "docs/manual-acceptance-record.md",
+  "## Build",
+  "Git commit",
+  "scripts/build-local-app.sh",
+  "dist/local/MaccyLite.app",
+  "## Result Matrix",
+  "启动与权限",
+  "捕获 HTML",
+  "捕获 RTF",
+  "已授权自动粘贴",
+  "每日导出默认关闭",
+  "长期运行观察",
+  "## Failure Log",
+  "Follow-up Rule",
+)
+require_text(
   "docs/manual-acceptance.md",
   "## 验收记录",
   "- [ ]",
@@ -210,6 +227,14 @@ require_text(
   "Clipboard capture sample",
   "复制失败",
   "每日导出失败",
+)
+require_text(
+  "docs/productization-acceptance-matrix.md",
+  "docs/manual-acceptance-record.md",
+)
+require_text(
+  "docs/productization-remaining.md",
+  "docs/manual-acceptance-record.md",
 )
 require_text(
   "Maccy/Info.plist",

@@ -40,7 +40,7 @@
 
 ## 还需要人工验收
 
-见 `docs/manual-acceptance.md`。重点是这些自动测试无法可靠证明的 macOS 行为：
+见 `docs/manual-acceptance.md`，结果记录到 `docs/manual-acceptance-record.md`。重点是这些自动测试无法可靠证明的 macOS 行为：
 
 - 菜单栏启动、快捷键唤起、面板焦点恢复。
 - Accessibility 未授权/已授权下的自动粘贴。
@@ -57,5 +57,5 @@
 
 ## 当前下一步
 
-1. 按 `docs/manual-acceptance.md` 做人工验收。
+1. 按 `docs/manual-acceptance.md` 做人工验收，并填写 `docs/manual-acceptance-record.md`。
 2. 人工验收失败项转成可回归测试或明确修复任务。
