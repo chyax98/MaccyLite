@@ -10,6 +10,7 @@ struct StorageType {
     NSPasteboard.PasteboardType.string
   ])
   static let all = StorageType(types: files.types + images.types + text.types)
+  static let defaultEnabled = StorageType(types: files.types + text.types)
 
   var types: [NSPasteboard.PasteboardType]
 }
@@ -34,7 +35,7 @@ enum AppPreferences {
 
   static var enabledPasteboardTypes: Set<NSPasteboard.PasteboardType> {
     get {
-      let raw = defaults.stringArray(forKey: "enabledPasteboardTypes") ?? StorageType.all.types.map { $0.rawValue }
+      let raw = defaults.stringArray(forKey: "enabledPasteboardTypes") ?? StorageType.defaultEnabled.types.map { $0.rawValue }
       return Set(raw.map { NSPasteboard.PasteboardType($0) })
     }
     set { set(newValue.map { $0.rawValue }, "enabledPasteboardTypes") }

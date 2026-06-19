@@ -296,6 +296,11 @@ require_text(
   "RunLoop.main.add(timer, forMode: .common)",
 )
 require_text(
+  "Maccy/AppPreferences.swift",
+  "static let defaultEnabled = StorageType(types: files.types + text.types)",
+  'defaults.stringArray(forKey: "enabledPasteboardTypes") ?? StorageType.defaultEnabled.types.map',
+)
+require_text(
   "scripts/build-local-app.sh",
   "CODE_SIGNING_ALLOWED=NO",
   "codesign --force --deep --sign -",
