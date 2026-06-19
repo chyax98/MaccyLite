@@ -59,4 +59,5 @@
 
 1. 按 `docs/manual-acceptance.md` 做人工验收，并填写 `docs/manual-acceptance-record.md`。
 2. 运行 `scripts/validate-manual-acceptance-record.py`，确认人工记录没有漏项。
-3. 人工验收失败项转成可回归测试或明确修复任务。
+3. 运行 `scripts/validate-productization-complete.sh`，确认自动证据和人工证据同时成立。
+4. 人工验收失败项转成可回归测试或明确修复任务。

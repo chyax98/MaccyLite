@@ -34,6 +34,12 @@ scripts/write-automatic-evidence.sh
 scripts/validate-manual-acceptance-record.py
 ```
 
+最终关闭产品化目标前运行：
+
+```sh
+scripts/validate-productization-complete.sh
+```
+
 它会依次运行：
 
 ```sh
@@ -53,5 +59,6 @@ FULL_PERFORMANCE=1 scripts/validate-productization.sh
 - 自动证据必须全部通过。
 - `docs/manual-acceptance.md` 的人工项必须完成，并同步记录到 `docs/manual-acceptance-record.md`。
 - `scripts/validate-manual-acceptance-record.py` 必须通过。
+- `scripts/validate-productization-complete.sh` 必须通过。
 - 人工发现的问题如果属于核心捕获、搜索、粘贴、导出或大对象恢复，必须修复并尽量转成自动测试。
 - 旧 Maccy 数据迁移取舍见 `docs/release-notes.md`：本项目作为新应用，不迁移旧历史和设置。

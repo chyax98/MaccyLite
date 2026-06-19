@@ -169,6 +169,7 @@ require_text(
   "scripts/write-automatic-evidence.sh",
   "scripts/build-local-app.sh",
   "scripts/validate-manual-acceptance-record.py",
+  "scripts/validate-productization-complete.sh",
   "docs/manual-acceptance.md",
   "docs/manual-acceptance-record.md",
 )
@@ -189,6 +190,7 @@ require_text(
   "scripts/validate-performance.sh",
   "scripts/write-automatic-evidence.sh",
   "scripts/validate-manual-acceptance-record.py",
+  "scripts/validate-productization-complete.sh",
   "FULL_PERFORMANCE=1",
   "不迁移旧历史和设置",
 )
@@ -206,6 +208,7 @@ require_text(
   "scripts/write-automatic-evidence.sh",
   "dist/validation/automatic-evidence.md",
   "scripts/validate-manual-acceptance-record.py",
+  "scripts/validate-productization-complete.sh",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/validate-non-gui.sh",
@@ -248,6 +251,7 @@ require_text(
   "docs/productization-remaining.md",
   "docs/manual-acceptance-record.md",
   "scripts/validate-manual-acceptance-record.py",
+  "scripts/validate-productization-complete.sh",
 )
 require_text(
   "Maccy/Info.plist",
@@ -301,9 +305,16 @@ require_text(
   "scope did not pass",
   "scope is missing evidence",
 )
+require_text(
+  "scripts/validate-productization-complete.sh",
+  "scripts/write-automatic-evidence.sh",
+  "scripts/validate-manual-acceptance-record.py",
+  "productization completion validation passed",
+)
 require_executable("scripts/build-local-app.sh")
 require_executable("scripts/write-automatic-evidence.sh")
 require_executable("scripts/validate-manual-acceptance-record.py")
+require_executable("scripts/validate-productization-complete.sh")
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
 require_executable("scripts/validate-maintenance.sh")

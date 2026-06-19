@@ -189,4 +189,10 @@ xcodebuild \
 scripts/validate-manual-acceptance-record.py
 ```
 
+最终关闭产品化目标前运行：
+
+```sh
+scripts/validate-productization-complete.sh
+```
+
 产品化是否可以关闭，按 [productization-acceptance-matrix.md](productization-acceptance-matrix.md) 判定。

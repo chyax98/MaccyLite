@@ -64,6 +64,12 @@ FULL_PERFORMANCE=1 scripts/validate-productization.sh
 scripts/validate-manual-acceptance-record.py
 ```
 
+最终关闭产品化目标前运行：
+
+```sh
+scripts/validate-productization-complete.sh
+```
+
 准备本地人工验收 App：
 
 ```sh
