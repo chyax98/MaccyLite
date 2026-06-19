@@ -39,22 +39,7 @@ MaccyLite 是一个面向自用的 macOS 快捷粘贴工具，基于 Maccy fork 
 默认验证不启动 App，不抢桌面焦点：
 
 ```sh
-swift test --package-path ClipboardCore
-```
-
-```sh
-cd /Users/xd/p/Maccy
-python3 scripts/verify-non-gui-validation.py
-```
-
-```sh
-xcodebuild \
-  -project Maccy.xcodeproj \
-  -scheme Maccy \
-  -configuration Debug \
-  -destination 'platform=macOS,arch=arm64' \
-  CODE_SIGNING_ALLOWED=NO \
-  build
+scripts/validate-non-gui.sh
 ```
 
 真实快捷键、面板焦点、Accessibility 自动粘贴只做人工验收，清单见 `docs/manual-acceptance.md`。

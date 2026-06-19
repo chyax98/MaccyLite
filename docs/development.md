@@ -57,6 +57,12 @@ open /path/to/MaccyLite.app
 
 ## 当前测试策略
 
+完整的非 GUI 验证入口：
+
+```sh
+scripts/validate-non-gui.sh
+```
+
 Core 逻辑以 SwiftPM 测试为准：
 
 ```sh
