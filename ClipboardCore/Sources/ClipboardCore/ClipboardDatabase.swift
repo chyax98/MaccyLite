@@ -52,6 +52,8 @@ public struct ClipboardDatabaseHealthReport: Sendable, Equatable {
 }
 
 public final class ClipboardDatabase: @unchecked Sendable {
+  private static let maximumSearchQueryLength = 1_000
+
   private let writer: DatabaseWriter
   private let recentSearchScope = 5_000
 
@@ -256,7 +258,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
   }
 
   public func search(_ query: String, limit: Int = 50) throws -> [ClipboardListItem] {
-    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmed = String(query.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maximumSearchQueryLength))
     guard !trimmed.isEmpty else {
       return try latest(limit: limit)
     }

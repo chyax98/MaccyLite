@@ -74,7 +74,7 @@ class History {
     let modifierFlags = currentModifierFlags()
 
     if modifierFlags.isEmpty {
-      guard !AppPreferences.pasteByDefault || Accessibility.check() else {
+      guard !AppPreferences.pasteByDefault || checkAccessibilityForPaste() else {
         return
       }
       AppState.shared.popup.close()
@@ -85,13 +85,13 @@ class History {
         AppState.shared.popup.close()
         copy(item)
       case .paste:
-        guard Accessibility.check() else {
+        guard checkAccessibilityForPaste() else {
           return
         }
         AppState.shared.popup.close()
         copy(item, pasteAfter: true)
       case .pasteWithoutFormatting:
-        guard Accessibility.check() else {
+        guard checkAccessibilityForPaste() else {
           return
         }
         AppState.shared.popup.close()
@@ -130,7 +130,9 @@ class History {
         Clipboard.shared.copy(contents: prepared.1, sourceApp: prepared.0)
         updateMenuText(item.displayText)
         if pasteAfter {
-          Clipboard.shared.paste()
+          if !Clipboard.shared.paste() {
+            AppState.shared.appDelegate?.showTransientStatus("需要辅助功能权限才能自动粘贴")
+          }
         }
       case .failure(let error):
         logger.warning("Failed to prepare clipboard payload for item \(itemID): \(error.localizedDescription)")
@@ -144,6 +146,16 @@ class History {
     NSApp.currentEvent?.modifierFlags
       .intersection(.deviceIndependentFlagsMask)
       .subtracting([.capsLock, .numericPad, .function]) ?? []
+  }
+
+  @MainActor
+  private func checkAccessibilityForPaste() -> Bool {
+    if Accessibility.check() {
+      return true
+    }
+
+    AppState.shared.appDelegate?.showTransientStatus("需要辅助功能权限才能自动粘贴")
+    return false
   }
 
   private func cachedLatestMenuText() -> String {

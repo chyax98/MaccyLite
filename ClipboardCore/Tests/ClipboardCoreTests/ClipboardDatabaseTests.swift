@@ -196,6 +196,34 @@ func databaseListAndSearchHideLegacyDuplicateFingerprints() throws {
 }
 
 @Test
+func databaseCapsVeryLongSearchQueries() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+  let text = String(repeating: "a", count: 1_000)
+  let data = Data(text.utf8)
+
+  try database.insert(ClipboardItemDraft(
+    id: "long-query-target",
+    copiedAt: Date(timeIntervalSince1970: 1),
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: text,
+    searchText: text,
+    contents: [
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.plainText,
+        byteCount: data.count,
+        inlineData: data,
+        assetPath: nil,
+        contentHash: AssetStore.sha256(data)
+      )
+    ]
+  ))
+
+  #expect(try database.search(text + String(repeating: "b", count: 20), limit: 10).map(\.id) == ["long-query-target"])
+}
+
+@Test
 func databaseShortChineseQueryFallsBackToFullHistory() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
