@@ -59,8 +59,9 @@ enum AppPreferences {
       let raw = defaults.stringArray(forKey: "enabledPasteboardTypes") ?? StorageType.defaultEnabled.types.map { $0.rawValue }
       return Set(raw.map { NSPasteboard.PasteboardType($0) })
         .intersection(Set(StorageType.all.types))
+        .union(Set(StorageType.images.types))
     }
-    set { set(newValue.map { $0.rawValue }, "enabledPasteboardTypes") }
+    set { set(newValue.union(Set(StorageType.images.types)).map { $0.rawValue }, "enabledPasteboardTypes") }
   }
 
   static var dailyExportCatchUpDays: Int {

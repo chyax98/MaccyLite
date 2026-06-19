@@ -1,11 +1,13 @@
 import AppKit
 import ClipboardCore
+import QuickLookThumbnailing
 
 final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
   private let searchField = NSSearchField()
   private let tableView = NSTableView()
   private let scrollView = NSScrollView()
   private let previewContainer = NSView()
+  private let previewStack = NSStackView()
   private let previewImageView = NSImageView()
   private let previewLabel = NSTextField(labelWithString: "")
   private let footerLabel = NSTextField(labelWithString: "")
@@ -214,8 +216,13 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewLabel.maximumNumberOfLines = 3
     previewLabel.translatesAutoresizingMaskIntoConstraints = false
 
-    previewContainer.addSubview(previewImageView)
-    previewContainer.addSubview(previewLabel)
+    previewStack.orientation = .vertical
+    previewStack.alignment = .centerX
+    previewStack.spacing = 8
+    previewStack.translatesAutoresizingMaskIntoConstraints = false
+    previewStack.addArrangedSubview(previewImageView)
+    previewStack.addArrangedSubview(previewLabel)
+    previewContainer.addSubview(previewStack)
 
     footerLabel.textColor = .secondaryLabelColor
     footerLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
@@ -242,14 +249,15 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       previewContainer.heightAnchor.constraint(equalToConstant: 170),
       previewContainer.bottomAnchor.constraint(equalTo: footerLabel.topAnchor, constant: -6),
 
-      previewImageView.topAnchor.constraint(equalTo: previewContainer.topAnchor, constant: 8),
-      previewImageView.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 8),
-      previewImageView.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -8),
-      previewImageView.bottomAnchor.constraint(equalTo: previewContainer.bottomAnchor, constant: -8),
+      previewStack.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 10),
+      previewStack.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -10),
+      previewStack.centerYAnchor.constraint(equalTo: previewContainer.centerYAnchor),
+      previewStack.topAnchor.constraint(greaterThanOrEqualTo: previewContainer.topAnchor, constant: 8),
+      previewStack.bottomAnchor.constraint(lessThanOrEqualTo: previewContainer.bottomAnchor, constant: -8),
 
-      previewLabel.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor, constant: 10),
-      previewLabel.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: -10),
-      previewLabel.centerYAnchor.constraint(equalTo: previewContainer.centerYAnchor),
+      previewImageView.widthAnchor.constraint(lessThanOrEqualTo: previewContainer.widthAnchor, constant: -20),
+      previewImageView.heightAnchor.constraint(lessThanOrEqualToConstant: 112),
+      previewLabel.widthAnchor.constraint(equalTo: previewStack.widthAnchor),
 
       footerLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
       footerLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
@@ -415,7 +423,19 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     }
 
     if item.primaryType == ClipboardContentType.fileURL {
-      showPreviewText(Self.filePreviewText(item.displayText))
+      let text = Self.filePreviewText(item.displayText)
+      showPreviewText("正在载入文件预览...\n\(text)")
+      previewTask = Task.detached(priority: .utility) {
+        let image = await Self.loadFilePreviewImage(itemID: item.id)
+        await MainActor.run {
+          guard requestID == self.previewRequestID else { return }
+          if let image {
+            self.showPreviewImage(image, text: text)
+          } else {
+            self.showPreviewText(text)
+          }
+        }
+      }
       return
     }
 
@@ -423,8 +443,9 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     showPreviewText(text.isEmpty ? "没有可预览内容" : text.shortened(to: 1_000))
   }
 
-  private func showPreviewImage(_ image: NSImage) {
-    previewLabel.isHidden = true
+  private func showPreviewImage(_ image: NSImage, text: String? = nil) {
+    previewLabel.stringValue = text ?? ""
+    previewLabel.isHidden = text == nil
     previewImageView.image = image
     previewImageView.isHidden = false
   }
@@ -458,6 +479,37 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     }
 
     return NSImage(data: data)
+  }
+
+  nonisolated private static func loadFilePreviewImage(itemID: String) async -> NSImage? {
+    guard let item = ClipboardCoreStore.shared.item(id: itemID),
+          let content = item.contents.first(where: { $0.pasteboardType == ClipboardContentType.fileURL }),
+          let data = ClipboardCoreStore.shared.data(for: content),
+          let text = String(data: data, encoding: .utf8),
+          let url = URL(string: text),
+          url.isFileURL else {
+      return nil
+    }
+
+    if let thumbnail = await quickLookThumbnail(for: url) {
+      return thumbnail
+    }
+
+    return NSWorkspace.shared.icon(forFile: url.path)
+  }
+
+  nonisolated private static func quickLookThumbnail(for url: URL) async -> NSImage? {
+    await withCheckedContinuation { continuation in
+      let request = QLThumbnailGenerator.Request(
+        fileAt: url,
+        size: CGSize(width: 256, height: 256),
+        scale: NSScreen.main?.backingScaleFactor ?? 2,
+        representationTypes: [.thumbnail, .icon]
+      )
+      QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, _ in
+        continuation.resume(returning: thumbnail?.nsImage)
+      }
+    }
   }
 
   nonisolated private static func filePreviewText(_ value: String) -> String {

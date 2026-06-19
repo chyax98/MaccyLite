@@ -317,9 +317,16 @@ require_text(
 )
 require_text(
   "Maccy/AppKitHistoryPanel.swift",
+  "QuickLookThumbnailing",
   "previewImageView",
   "loadPreviewImage",
+  "loadFilePreviewImage",
   "filePreviewText",
+)
+reject_text(
+  "Maccy/Observables/AppState.swift",
+  "imageCapture",
+  "记录图片",
 )
 reject_text(
   "Maccy/AppPreferences.swift",
