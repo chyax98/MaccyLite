@@ -493,6 +493,95 @@ func databasePinsAndDeletesItems() throws {
 }
 
 @Test
+func databaseDeletesUnpinnedItemsInBatchAndKeepsPinnedItems() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+
+  try database.insert(ClipboardItemDraft(
+    id: "pinned",
+    copiedAt: Date(timeIntervalSince1970: 1),
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "保留",
+    searchText: "保留",
+    contents: []
+  ))
+  try database.insert(ClipboardItemDraft(
+    id: "unpinned",
+    copiedAt: Date(timeIntervalSince1970: 2),
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "删除",
+    searchText: "删除",
+    contents: []
+  ))
+
+  try database.setPinned(true, itemID: "pinned")
+  try database.deleteUnpinned()
+
+  #expect(try database.latest().map(\.id) == ["pinned"])
+  #expect(try database.search("删除").isEmpty)
+}
+
+@Test
+func databaseDeletesAllItemsInBatch() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+
+  try database.insert(ClipboardItemDraft(
+    id: "first",
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "第一条",
+    searchText: "第一条",
+    contents: []
+  ))
+  try database.insert(ClipboardItemDraft(
+    id: "second",
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "第二条",
+    searchText: "第二条",
+    contents: []
+  ))
+
+  try database.deleteAll()
+
+  #expect(try database.latest().isEmpty)
+  #expect(try database.search("第一条").isEmpty)
+}
+
+@Test
+func databaseReturnsLatestUnpinnedDisplayTextForMenuBar() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+
+  try database.insert(ClipboardItemDraft(
+    id: "old",
+    copiedAt: Date(timeIntervalSince1970: 1),
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "旧文本",
+    searchText: "旧文本",
+    contents: []
+  ))
+  try database.insert(ClipboardItemDraft(
+    id: "new",
+    copiedAt: Date(timeIntervalSince1970: 2),
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "新文本",
+    searchText: "新文本",
+    contents: []
+  ))
+
+  #expect(try database.latestUnpinnedDisplayText() == "新文本")
+
+  try database.setPinned(true, itemID: "new")
+  #expect(try database.latestUnpinnedDisplayText() == "旧文本")
+}
+
+@Test
 func databaseReturnsStoredItemsWithContents() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))

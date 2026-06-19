@@ -6,66 +6,48 @@ import Logging
 class History {
   static let shared = History()
   let logger = Logger(label: "com.local.MaccyLite")
+  private let menuTextLock = NSLock()
+  private var cachedMenuText: String?
+
   private struct MissingHistoryItemError: LocalizedError {
     var errorDescription: String? {
       "找不到历史条目"
     }
   }
 
-  var items: [HistoryItemDecorator] = [] {
-    didSet {
-      rebuildItemCaches()
-    }
-  }
-
-  private(set) var pinnedItems: [HistoryItemDecorator] = []
-  private(set) var unpinnedItems: [HistoryItemDecorator] = []
-  var searchQuery: String = "" {
-    didSet {
-      throttler.throttle { [self] in
-        Task { @MainActor in
-          await reloadVisibleItems()
-        }
-      }
-    }
-  }
-
-  private let throttler = Throttler(minimumDelay: 0.12)
-  private let pageSize = 200
-  private var reloadGeneration = 0
-
   init() {
   }
 
-  @MainActor
-  func load() async throws {
-    await reloadVisibleItems()
+  var menuIconText: String {
+    let title = cachedLatestMenuText()
+      .shortened(to: 100)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return title.replacingOccurrences(of: "\n", with: " ").shortened(to: 20)
   }
 
   @MainActor
   func add(_ item: ClipboardStoredItem) {
-    let decorator = HistoryItemDecorator(item)
-    items.removeAll { $0.itemID == item.id }
-    items.insert(decorator, at: 0)
-    limitVisibleHistorySize(to: AppPreferences.size)
+    updateMenuText(item.isPinned ? nil : item.displayText)
   }
 
   @MainActor
   func clear() {
-    let itemIDs = unpinnedItems.map(\.itemID)
-    items.removeAll(where: \.isUnpinned)
     Clipboard.shared.clear()
     AppState.shared.popup.close()
-    deleteItemsInBackground(itemIDs)
+    updateMenuText(nil)
+    Task.detached(priority: .utility) {
+      ClipboardCoreStore.shared.deleteUnpinned()
+    }
   }
 
   @MainActor
   func clearAll() {
-    let itemIDs = items.map(\.itemID)
-    items.removeAll()
     Clipboard.shared.clear()
     AppState.shared.popup.close()
-    deleteItemsInBackground(itemIDs)
+    updateMenuText(nil)
+    Task.detached(priority: .utility) {
+      ClipboardCoreStore.shared.deleteAll()
+    }
   }
 
   @MainActor
@@ -73,9 +55,14 @@ class History {
     guard let item else { return }
 
     let itemID = item.itemID
-    items.removeAll { $0 == item }
-
-    deleteItemsInBackground([itemID])
+    Task.detached(priority: .utility) {
+      ClipboardCoreStore.shared.delete(itemID: itemID)
+      let latest = ClipboardCoreStore.shared.latestUnpinnedDisplayText()
+      self.updateMenuText(latest)
+      await MainActor.run {
+        AppState.shared.appDelegate?.refreshMenuIconText()
+      }
+    }
   }
 
   @MainActor
@@ -113,40 +100,6 @@ class History {
         return
       }
     }
-
-    Task {
-      searchQuery = ""
-    }
-  }
-
-  @MainActor
-  func togglePin(_ item: HistoryItemDecorator?) {
-    guard let item else { return }
-
-    item.togglePin()
-    sortPinned()
-
-    searchQuery = ""
-  }
-
-  @MainActor
-  private func reloadVisibleItems() async {
-    let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-    reloadGeneration += 1
-    let generation = reloadGeneration
-    let pageSize = pageSize
-    let storedItems = await Task.detached(priority: .userInitiated) {
-      query.isEmpty
-        ? ClipboardCoreStore.shared.latest(limit: pageSize)
-        : ClipboardCoreStore.shared.search(query, limit: pageSize)
-    }.value
-
-    guard generation == reloadGeneration else {
-      return
-    }
-
-    items = storedItems.map(HistoryItemDecorator.init)
-    sortPinned()
   }
 
   @MainActor
@@ -175,6 +128,7 @@ class History {
       switch prepared {
       case .success(let prepared):
         Clipboard.shared.copy(contents: prepared.1, sourceApp: prepared.0)
+        updateMenuText(item.text)
         if pasteAfter {
           Clipboard.shared.paste()
         }
@@ -186,71 +140,30 @@ class History {
     }
   }
 
-  @MainActor
-  private func limitVisibleHistorySize(to maxSize: Int) {
-    let visibleUnpinnedLimit = min(maxSize, pageSize)
-    var unpinnedCount = 0
-
-    items = items.filter { item in
-      guard item.isUnpinned else {
-        return true
-      }
-
-      unpinnedCount += 1
-      return unpinnedCount <= visibleUnpinnedLimit
-    }
-  }
-
-  private func deleteItemsInBackground(_ itemIDs: [String]) {
-    guard !itemIDs.isEmpty else {
-      return
-    }
-
-    Task.detached(priority: .utility) {
-      for itemID in itemIDs {
-        ClipboardCoreStore.shared.delete(itemID: itemID)
-      }
-    }
-  }
-
   private func currentModifierFlags() -> NSEvent.ModifierFlags {
     NSApp.currentEvent?.modifierFlags
       .intersection(.deviceIndependentFlagsMask)
       .subtracting([.capsLock, .numericPad, .function]) ?? []
   }
 
-  private func sortPinned() {
-    if AppPreferences.pinTo == .bottom {
-      items.sort { lhs, rhs in
-        if lhs.isPinned != rhs.isPinned {
-          return lhs.isUnpinned && rhs.isPinned
-        }
-        return lhs.copiedAt > rhs.copiedAt
-      }
-    } else {
-      items.sort { lhs, rhs in
-        if lhs.isPinned != rhs.isPinned {
-          return lhs.isPinned && rhs.isUnpinned
-        }
-        return lhs.copiedAt > rhs.copiedAt
-      }
-    }
-    rebuildItemCaches()
-  }
+  private func cachedLatestMenuText() -> String {
+    menuTextLock.lock()
+    let cached = cachedMenuText
+    menuTextLock.unlock()
 
-  private func rebuildItemCaches() {
-    var pinnedItems: [HistoryItemDecorator] = []
-    var unpinnedItems: [HistoryItemDecorator] = []
-
-    for item in items {
-      if item.isPinned {
-        pinnedItems.append(item)
-      } else {
-        unpinnedItems.append(item)
-      }
+    if let cached {
+      return cached
     }
 
-    self.pinnedItems = pinnedItems
-    self.unpinnedItems = unpinnedItems
+    let latest = ClipboardCoreStore.shared.latestUnpinnedDisplayText() ?? ""
+    updateMenuText(latest)
+    return latest
   }
+
+  private func updateMenuText(_ text: String?) {
+    menuTextLock.lock()
+    cachedMenuText = text
+    menuTextLock.unlock()
+  }
+
 }

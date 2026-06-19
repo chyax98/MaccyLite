@@ -185,6 +185,37 @@ public final class ClipboardDatabase: @unchecked Sendable {
     }
   }
 
+  public func deleteUnpinned() throws {
+    try writer.write { db in
+      try db.execute(sql: "DELETE FROM clipboard_search WHERE item_id IN (SELECT id FROM clipboard_items WHERE is_pinned = 0)")
+      try db.execute(sql: "DELETE FROM clipboard_trigram WHERE item_id IN (SELECT id FROM clipboard_items WHERE is_pinned = 0)")
+      try db.execute(sql: "DELETE FROM clipboard_items WHERE is_pinned = 0")
+    }
+  }
+
+  public func deleteAll() throws {
+    try writer.write { db in
+      try db.execute(sql: "DELETE FROM clipboard_search")
+      try db.execute(sql: "DELETE FROM clipboard_trigram")
+      try db.execute(sql: "DELETE FROM clipboard_items")
+    }
+  }
+
+  public func latestUnpinnedDisplayText() throws -> String? {
+    try writer.read { db in
+      try String.fetchOne(
+        db,
+        sql: """
+        SELECT display_text
+        FROM clipboard_items
+        WHERE is_pinned = 0
+        ORDER BY copied_at DESC
+        LIMIT 1
+        """
+      )
+    }
+  }
+
   public func latest(limit: Int = 50, offset: Int = 0) throws -> [ClipboardListItem] {
     try writer.read { db in
       try fetchListItems(

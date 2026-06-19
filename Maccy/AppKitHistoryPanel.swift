@@ -271,14 +271,26 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
   private func deleteCurrentItem() {
     guard let item = selectedItem() else { return }
+    let selectedRow = tableView.selectedRow
     History.shared.delete(item)
-    reload(query: searchField.stringValue, force: true)
+    items.removeAll { $0.itemID == item.itemID }
+    tableView.reloadData()
+    if !items.isEmpty {
+      tableView.selectRowIndexes(IndexSet(integer: min(max(selectedRow, 0), items.count - 1)), byExtendingSelection: false)
+    }
+    updateFooter()
   }
 
   private func togglePinCurrentItem() {
     guard let item = selectedItem() else { return }
-    ClipboardCoreStore.shared.setPinned(!item.isPinned, itemID: item.itemID)
-    reload(query: searchField.stringValue, force: true)
+    item.togglePin()
+    sortLocalItems()
+    tableView.reloadData()
+    if let row = items.firstIndex(where: { $0.itemID == item.itemID }) {
+      tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+      tableView.scrollRowToVisible(row)
+    }
+    updateFooter()
   }
 
   private func moveSelection(by delta: Int) {
@@ -295,6 +307,15 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
       footerLabel.stringValue = "Enter \(action) · Option+P Pin · Delete 删除 · \(item.copiedAt.formatted(date: .numeric, time: .shortened))"
     } else {
       footerLabel.stringValue = "没有历史记录"
+    }
+  }
+
+  private func sortLocalItems() {
+    items.sort { lhs, rhs in
+      if lhs.isPinned != rhs.isPinned {
+        return AppPreferences.pinTo == .bottom ? lhs.isUnpinned && rhs.isPinned : lhs.isPinned && rhs.isUnpinned
+      }
+      return lhs.copiedAt > rhs.copiedAt
     }
   }
 

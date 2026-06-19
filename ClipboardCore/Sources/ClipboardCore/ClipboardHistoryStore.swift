@@ -54,6 +54,18 @@ public final class ClipboardHistoryStore: @unchecked Sendable {
     try database.delete(itemID: itemID)
   }
 
+  public func deleteUnpinned() throws {
+    try database.deleteUnpinned()
+  }
+
+  public func deleteAll() throws {
+    try database.deleteAll()
+  }
+
+  public func latestUnpinnedDisplayText() throws -> String? {
+    try database.latestUnpinnedDisplayText()
+  }
+
   public func trimUnpinned(maxCount: Int) throws {
     try database.trimUnpinned(maxCount: maxCount)
   }

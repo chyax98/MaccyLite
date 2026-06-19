@@ -334,6 +334,14 @@ reject_text(
   "menuIcon",
   "imageMaxHeight",
 )
+reject_text(
+  "Maccy/Observables/History.swift",
+  "searchQuery",
+  "reloadVisibleItems",
+  "pinnedItems",
+  "unpinnedItems",
+  "Throttler",
+)
 require_text(
   "scripts/build-local-app.sh",
   "CODE_SIGNING_ALLOWED=NO",
@@ -455,6 +463,7 @@ for forbidden in [
   "Sauce",
   "KeyboardLayout.swift",
   "MenuIcon.swift",
+  "Throttler.swift",
   "com.p0deje",
   "org.p0deje",
 ]:
@@ -525,6 +534,7 @@ for forbidden_path in [
   "Maccy/AppStoreReview.swift",
   "Maccy/SoftwareUpdater.swift",
   "Maccy/Notifier.swift",
+  "Maccy/Throttler.swift",
   "Maccy/Search.swift",
   "Maccy/Sorter.swift",
   "Maccy/Storage.swift",

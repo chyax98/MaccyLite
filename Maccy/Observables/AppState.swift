@@ -11,10 +11,7 @@ final class AppState {
   private var preferencesWindowController: NSWindowController?
 
   var menuIconText: String {
-    var title = history.unpinnedItems.first?.text.shortened(to: 100)
-      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    title.unicodeScalars.removeAll(where: CharacterSet.newlines.contains)
-    return title.shortened(to: 20)
+    history.menuIconText
   }
 
   func openAbout() {

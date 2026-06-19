@@ -103,6 +103,33 @@ final class ClipboardCoreStore {
     }
   }
 
+  func deleteUnpinned() {
+    do {
+      try historyStore.deleteUnpinned()
+      bumpRevision()
+    } catch {
+      logger.error("Failed to delete unpinned clipboard items: \(error.localizedDescription)")
+    }
+  }
+
+  func deleteAll() {
+    do {
+      try historyStore.deleteAll()
+      bumpRevision()
+    } catch {
+      logger.error("Failed to delete clipboard items: \(error.localizedDescription)")
+    }
+  }
+
+  func latestUnpinnedDisplayText() -> String? {
+    do {
+      return try historyStore.latestUnpinnedDisplayText()
+    } catch {
+      logger.error("Failed to load latest clipboard title: \(error.localizedDescription)")
+      return nil
+    }
+  }
+
   private func shouldTrimAfterInsert() -> Bool {
     trimLock.lock()
     defer { trimLock.unlock() }
