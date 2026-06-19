@@ -15,6 +15,17 @@
 - 复制多文件 URL，历史列表保留文件信息，重新选择后 Finder/目标 App 能收到文件 URL。
 - 复制图片，列表不阻塞，预览显示缩略图或图片信息。
 
+## 运行时性能采样
+
+- 复制短文本、大文本、图片时，日志里应出现 `Clipboard capture sample`。
+- 正常样本应为 debug；超过阈值时应出现 warning。
+- warning 阈值：
+  - pasteboard read > `50 ms`
+  - Core insert > `50 ms`
+  - capture total > `100 ms`
+  - thumbnail generation > `100 ms`
+- 如果出现 warning，需要记录复制来源 App、内容类型、`types/read_ms/insert_ms/total_ms`。
+
 ## 检索与列表
 
 - 搜索中文短词能命中老历史，不只命中最近几千条。

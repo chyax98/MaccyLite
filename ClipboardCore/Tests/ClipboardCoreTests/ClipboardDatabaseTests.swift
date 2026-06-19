@@ -1162,6 +1162,59 @@ func pasteboardCaptureRulesFilterDisabledDynamicAndMicrosoftBookmarkTypes() {
   #expect(selected == [ClipboardContentType.plainText, "custom.sidecar"])
 }
 
+@Test
+func runtimePerformancePolicyDetectsSlowCaptureSamples() {
+  let policy = ClipboardRuntimePerformancePolicy(
+    pasteboardReadWarningMilliseconds: 10,
+    coreInsertWarningMilliseconds: 20,
+    totalCaptureWarningMilliseconds: 30,
+    thumbnailWarningMilliseconds: 40
+  )
+
+  #expect(!policy.captureExceededWarningThreshold(ClipboardCapturePerformanceSample(
+    typeCount: 2,
+    readMilliseconds: 10,
+    insertMilliseconds: 20,
+    totalMilliseconds: 30
+  )))
+  #expect(policy.captureExceededWarningThreshold(ClipboardCapturePerformanceSample(
+    typeCount: 2,
+    readMilliseconds: 10.1,
+    insertMilliseconds: 20,
+    totalMilliseconds: 30
+  )))
+  #expect(policy.captureExceededWarningThreshold(ClipboardCapturePerformanceSample(
+    typeCount: 2,
+    readMilliseconds: 10,
+    insertMilliseconds: 20.1,
+    totalMilliseconds: 30
+  )))
+  #expect(policy.captureExceededWarningThreshold(ClipboardCapturePerformanceSample(
+    typeCount: 2,
+    readMilliseconds: 10,
+    insertMilliseconds: 20,
+    totalMilliseconds: 30.1
+  )))
+}
+
+@Test
+func runtimePerformancePolicyDetectsSlowThumbnailGeneration() {
+  let policy = ClipboardRuntimePerformancePolicy(thumbnailWarningMilliseconds: 40)
+
+  #expect(!policy.thumbnailExceededWarningThreshold(ThumbnailPerformanceSample(
+    generatedCount: 0,
+    elapsedMilliseconds: 100
+  )))
+  #expect(!policy.thumbnailExceededWarningThreshold(ThumbnailPerformanceSample(
+    generatedCount: 1,
+    elapsedMilliseconds: 40
+  )))
+  #expect(policy.thumbnailExceededWarningThreshold(ThumbnailPerformanceSample(
+    generatedCount: 1,
+    elapsedMilliseconds: 40.1
+  )))
+}
+
 private func temporaryDirectory() throws -> URL {
   let directory = FileManager.default.temporaryDirectory
     .appending(path: UUID().uuidString, directoryHint: .isDirectory)

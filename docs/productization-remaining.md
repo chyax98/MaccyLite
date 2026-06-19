@@ -27,7 +27,8 @@
   - 可继续把类型选择/过滤/大对象策略拆成纯函数后测试，降低手测压力。
 - 性能基准回归：
   - 已有 benchmark 数字和 `scripts/validate-performance.sh` 阈值脚本。
-  - 还需要 AppShell runtime sampling，覆盖真实 pasteboard capture 和 thumbnail generation。
+  - AppShell 已对 pasteboard capture 和 thumbnail generation 做运行时采样，慢样本打 warning。
+  - 还需要人工运行时观察真实 App 来源的 warning 样本。
 
 ## 还需要人工验收
 

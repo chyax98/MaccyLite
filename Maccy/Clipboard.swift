@@ -12,6 +12,7 @@ class Clipboard: @unchecked Sendable {
   var changeCount: Int
 
   private let pasteboard = NSPasteboard.general
+  private let performancePolicy = ClipboardRuntimePerformancePolicy.default
 
   private var timer: Timer?
   private let logger = Logger(label: "com.local.MaccyLite.clipboard")
@@ -206,9 +207,18 @@ class Clipboard: @unchecked Sendable {
       )
       let insertedAt = ContinuousClock.now
 
-      logger.debug(
-        "Clipboard capture sample: types=\(coreContents.count) read_ms=\(captureStartedAt.duration(to: pasteboardReadAt).milliseconds) insert_ms=\(pasteboardReadAt.duration(to: insertedAt).milliseconds) total_ms=\(captureStartedAt.duration(to: insertedAt).milliseconds)"
+      let captureSample = ClipboardCapturePerformanceSample(
+        typeCount: coreContents.count,
+        readMilliseconds: captureStartedAt.duration(to: pasteboardReadAt).milliseconds,
+        insertMilliseconds: pasteboardReadAt.duration(to: insertedAt).milliseconds,
+        totalMilliseconds: captureStartedAt.duration(to: insertedAt).milliseconds
       )
+      let captureMessage = "Clipboard capture sample: types=\(captureSample.typeCount) read_ms=\(captureSample.readMilliseconds) insert_ms=\(captureSample.insertMilliseconds) total_ms=\(captureSample.totalMilliseconds)"
+      if self?.performancePolicy.captureExceededWarningThreshold(captureSample) == true {
+        logger.warning("\(captureMessage)")
+      } else {
+        logger.debug("\(captureMessage)")
+      }
 
       guard let coreItem else {
         return
@@ -222,8 +232,17 @@ class Clipboard: @unchecked Sendable {
         let thumbnailStartedAt = ContinuousClock.now
         let generated = ClipboardCoreStore.shared.generatePendingThumbnails()
         let elapsed = thumbnailStartedAt.duration(to: ContinuousClock.now).milliseconds
+        let thumbnailSample = ThumbnailPerformanceSample(
+          generatedCount: generated,
+          elapsedMilliseconds: elapsed
+        )
         if generated > 0 {
-          logger.debug("Thumbnail generation sample: generated=\(generated) elapsed_ms=\(elapsed)")
+          let thumbnailMessage = "Thumbnail generation sample: generated=\(generated) elapsed_ms=\(elapsed)"
+          if self?.performancePolicy.thumbnailExceededWarningThreshold(thumbnailSample) == true {
+            logger.warning("\(thumbnailMessage)")
+          } else {
+            logger.debug("\(thumbnailMessage)")
+          }
         }
       }
     }
