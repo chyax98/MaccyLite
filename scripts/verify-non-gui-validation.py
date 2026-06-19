@@ -303,6 +303,11 @@ require_text(
   "if currentRaw == oldDefault",
 )
 require_text(
+  "Maccy/ClipboardCoreStore.swift",
+  "private let trimBatchSize = 50",
+  "private func shouldTrimAfterInsert() -> Bool",
+)
+require_text(
   "scripts/build-local-app.sh",
   "CODE_SIGNING_ALLOWED=NO",
   "codesign --force --deep --sign -",

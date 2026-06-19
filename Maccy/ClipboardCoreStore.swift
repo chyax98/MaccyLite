@@ -12,6 +12,10 @@ final class ClipboardCoreStore {
   private let capture: ClipboardCapture
   private let historyStore: ClipboardHistoryStore
   private let root: URL
+  private let trimBatchSize = 50
+  private let trimLock = NSLock()
+  private var didTrimAfterLaunch = false
+  private var insertsSinceTrim = 0
 
   private init() {
     let root = URL.applicationSupportDirectory.appending(path: "MaccyLite")
@@ -37,10 +41,12 @@ final class ClipboardCoreStore {
         return nil
       }
 
-      do {
-        try historyStore.trimUnpinned(maxCount: AppPreferences.size)
-      } catch {
-        logger.error("Failed to trim clipboard history after insert: \(error.localizedDescription)")
+      if shouldTrimAfterInsert() {
+        do {
+          try historyStore.trimUnpinned(maxCount: AppPreferences.size)
+        } catch {
+          logger.error("Failed to trim clipboard history after insert: \(error.localizedDescription)")
+        }
       }
       return item
     } catch {
@@ -90,6 +96,25 @@ final class ClipboardCoreStore {
     } catch {
       logger.error("Failed to delete clipboard item \(itemID): \(error.localizedDescription)")
     }
+  }
+
+  private func shouldTrimAfterInsert() -> Bool {
+    trimLock.lock()
+    defer { trimLock.unlock() }
+
+    guard didTrimAfterLaunch else {
+      didTrimAfterLaunch = true
+      insertsSinceTrim = 0
+      return true
+    }
+
+    insertsSinceTrim += 1
+    guard insertsSinceTrim >= trimBatchSize else {
+      return false
+    }
+
+    insertsSinceTrim = 0
+    return true
   }
 
   @discardableResult
