@@ -1,5 +1,4 @@
-import Defaults
-import SwiftUI
+import AppKit
 
 class ApplicationImage {
   fileprivate static let fallbackImage = NSImage(

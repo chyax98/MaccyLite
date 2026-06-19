@@ -1,6 +1,5 @@
 import AppKit
 import ClipboardCore
-import Defaults
 import Foundation
 import Logging
 
@@ -39,7 +38,7 @@ final class ClipboardCoreStore {
       }
 
       do {
-        try historyStore.trimUnpinned(maxCount: Defaults[.size])
+        try historyStore.trimUnpinned(maxCount: AppPreferences.size)
       } catch {
         logger.error("Failed to trim clipboard history after insert: \(error.localizedDescription)")
       }

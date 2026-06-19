@@ -1,17 +1,14 @@
 import AppKit.NSWorkspace
 import ClipboardCore
-import Defaults
 import Foundation
-import Observation
 
-@Observable
 class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   static func == (lhs: HistoryItemDecorator, rhs: HistoryItemDecorator) -> Bool {
     return lhs.id == rhs.id
   }
 
   static var previewImageSize: NSSize { NSScreen.forPopup?.visibleFrame.size ?? NSSize(width: 2048, height: 1536) }
-  static var thumbnailImageSize: NSSize { NSSize(width: 340, height: Defaults[.imageMaxHeight]) }
+  static var thumbnailImageSize: NSSize { NSSize(width: 340, height: AppPreferences.imageMaxHeight) }
 
   let id = UUID()
   let itemID: String
@@ -196,19 +193,7 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   }
 
   func highlight(_ query: String) {
-    guard !query.isEmpty, !title.isEmpty,
-          let range = title.range(of: query, options: .caseInsensitive) else {
-      attributedTitle = nil
-      return
-    }
-
-    var attributedString = AttributedString(title.shortened(to: 500))
-    if let lowerBound = AttributedString.Index(range.lowerBound, within: attributedString),
-       let upperBound = AttributedString.Index(range.upperBound, within: attributedString) {
-      attributedString[lowerBound..<upperBound].backgroundColor = .findHighlightColor
-      attributedString[lowerBound..<upperBound].foregroundColor = .black
-    }
-    attributedTitle = attributedString
+    attributedTitle = nil
   }
 
   @MainActor

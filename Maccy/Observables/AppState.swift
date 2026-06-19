@@ -1,29 +1,14 @@
 import AppKit
-import Defaults
-import Foundation
-import Settings
-import SwiftUI
 
-@Observable
-class AppState {
-  static let shared = AppState(history: History.shared, footer: Footer())
-
-  let multiSelectionEnabled = false
+final class AppState {
+  static let shared = AppState()
 
   var appDelegate: AppDelegate?
-  var popup: Popup
-  var history: History
-  var footer: Footer
-  var navigator: NavigationManager
-  var preview: SlideoutController
+  let popup = Popup()
+  let history = History.shared
 
-  var searchVisible: Bool {
-    if !Defaults[.showSearch] { return false }
-    switch Defaults[.searchVisibility] {
-    case .always: return true
-    case .duringSearch: return !history.searchQuery.isEmpty
-    }
-  }
+  private let about = About()
+  private var preferencesWindowController: NSWindowController?
 
   var menuIconText: String {
     var title = history.unpinnedItems.first?.text.shortened(to: 100)
@@ -32,130 +17,141 @@ class AppState {
     return title.shortened(to: 20)
   }
 
-  private let about = About()
-  private var settingsWindowController: SettingsWindowController?
-
-  init(history: History, footer: Footer) {
-    self.history = history
-    self.footer = footer
-    popup = Popup()
-    navigator = NavigationManager(history: history, footer: footer)
-    preview = SlideoutController(
-      onContentResize: { contentWidth in
-        Defaults[.windowSize].width = contentWidth
-      },
-      onSlideoutResize: { previewWidth in
-        Defaults[.previewWidth] = previewWidth
-      })
-    preview.contentWidth = Defaults[.windowSize].width
-    preview.slideoutWidth = Defaults[.previewWidth]
-  }
-
-  @MainActor
-  func select() {
-    if !navigator.selection.isEmpty {
-      if navigator.isMultiSelectInProgress {
-        navigator.isManualMultiSelect = false
-        history.startPasteStack(selection: &navigator.selection)
-      } else {
-        history.select(navigator.selection.first)
-      }
-    } else if let item = footer.selectedItem {
-      item.perform()
-    } else {
-      Clipboard.shared.copy(history.searchQuery)
-      history.searchQuery = ""
-    }
-  }
-
-  @MainActor
-  func togglePin() {
-    withTransaction(Transaction()) {
-      navigator.selection.forEach { _, item in
-        history.togglePin(item)
-      }
-    }
-  }
-
-  @MainActor
-  func removePasteStack() {
-    history.interruptPasteStack()
-    navigator.highlightFirst()
-  }
-
-  @MainActor
-  func deleteSelection() {
-    guard let leadItem = navigator.leadHistoryItem else { return }
-    let nextUnselectedItem = history.visibleItems.nearest(to: leadItem) { !$0.isSelected }
-
-    withTransaction(Transaction()) {
-      navigator.selection.forEach { _, item in
-        history.delete(item)
-      }
-      navigator.select(item: nextUnselectedItem)
-    }
-  }
-
   func openAbout() {
     about.openAbout(nil)
   }
 
   @MainActor
-  func openPreferences() { // swiftlint:disable:this function_body_length
-    if settingsWindowController == nil {
-      settingsWindowController = SettingsWindowController(
-        panes: [
-          Settings.Pane(
-            identifier: Settings.PaneIdentifier.general,
-            title: NSLocalizedString("Title", tableName: "GeneralSettings", comment: ""),
-            toolbarIcon: NSImage.gearshape!
-          ) {
-            GeneralSettingsPane()
-          },
-          Settings.Pane(
-            identifier: Settings.PaneIdentifier.storage,
-            title: NSLocalizedString("Title", tableName: "StorageSettings", comment: ""),
-            toolbarIcon: NSImage.externaldrive!
-          ) {
-            StorageSettingsPane()
-          },
-          Settings.Pane(
-            identifier: Settings.PaneIdentifier.appearance,
-            title: NSLocalizedString("Title", tableName: "AppearanceSettings", comment: ""),
-            toolbarIcon: NSImage.paintpalette!
-          ) {
-            AppearanceSettingsPane()
-          },
-          Settings.Pane(
-            identifier: Settings.PaneIdentifier.pins,
-            title: NSLocalizedString("Title", tableName: "PinsSettings", comment: ""),
-            toolbarIcon: NSImage.pincircle!
-          ) {
-            PinsSettingsPane()
-              .environment(self)
-          },
-          Settings.Pane(
-            identifier: Settings.PaneIdentifier.ignore,
-            title: NSLocalizedString("Title", tableName: "IgnoreSettings", comment: ""),
-            toolbarIcon: NSImage.nosign!
-          ) {
-            IgnoreSettingsPane()
-          },
-          Settings.Pane(
-            identifier: Settings.PaneIdentifier.advanced,
-            title: NSLocalizedString("Title", tableName: "AdvancedSettings", comment: ""),
-            toolbarIcon: NSImage.gearshape2!
-          ) {
-            AdvancedSettingsPane()
-          }
-        ]
-      )
+  func openPreferences() {
+    if preferencesWindowController == nil {
+      preferencesWindowController = NSWindowController(window: PreferencesWindow())
     }
-    settingsWindowController?.show()
-    settingsWindowController?.window?.orderFrontRegardless()
+    preferencesWindowController?.showWindow(nil)
+    preferencesWindowController?.window?.orderFrontRegardless()
   }
 
   func quit() {
     NSApp.terminate(self)
+  }
+}
+
+private final class PreferencesWindow: NSWindow {
+  private let pasteByDefault = NSButton(checkboxWithTitle: "默认直接粘贴", target: nil, action: nil)
+  private let removeFormatting = NSButton(checkboxWithTitle: "默认去除格式", target: nil, action: nil)
+  private let dailyExport = NSButton(checkboxWithTitle: "启用每日导出", target: nil, action: nil)
+  private let imageCapture = NSButton(checkboxWithTitle: "记录图片", target: nil, action: nil)
+  private let fileCapture = NSButton(checkboxWithTitle: "记录文件 URL", target: nil, action: nil)
+  private let textCapture = NSButton(checkboxWithTitle: "记录文本/HTML/RTF", target: nil, action: nil)
+  private let historySizeField = NSTextField()
+
+  init() {
+    super.init(
+      contentRect: NSRect(x: 0, y: 0, width: 460, height: 300),
+      styleMask: [.titled, .closable, .miniaturizable],
+      backing: .buffered,
+      defer: false
+    )
+
+    title = "MaccyLite 设置"
+    isReleasedWhenClosed = false
+    center()
+    configure()
+    loadDefaults()
+  }
+
+  private func configure() {
+    let stack = NSStackView()
+    stack.orientation = .vertical
+    stack.alignment = .leading
+    stack.spacing = 12
+    stack.translatesAutoresizingMaskIntoConstraints = false
+
+    let title = NSTextField(labelWithString: "核心设置")
+    title.font = .boldSystemFont(ofSize: 16)
+
+    let storageTitle = NSTextField(labelWithString: "记录类型")
+    storageTitle.font = .boldSystemFont(ofSize: 13)
+
+    let sizeRow = NSStackView()
+    sizeRow.orientation = .horizontal
+    sizeRow.spacing = 8
+    sizeRow.addArrangedSubview(NSTextField(labelWithString: "历史上限"))
+    historySizeField.frame.size.width = 90
+    historySizeField.formatter = {
+      let formatter = NumberFormatter()
+      formatter.allowsFloats = false
+      formatter.minimum = 100
+      formatter.maximum = 100_000
+      return formatter
+    }()
+    sizeRow.addArrangedSubview(historySizeField)
+
+    [pasteByDefault, removeFormatting, dailyExport, imageCapture, fileCapture, textCapture].forEach {
+      $0.target = self
+      $0.action = #selector(saveDefaults)
+    }
+    historySizeField.target = self
+    historySizeField.action = #selector(saveDefaults)
+
+    stack.addArrangedSubview(title)
+    stack.addArrangedSubview(pasteByDefault)
+    stack.addArrangedSubview(removeFormatting)
+    stack.addArrangedSubview(dailyExport)
+    stack.addArrangedSubview(sizeRow)
+    let separator = NSBox()
+    separator.boxType = .separator
+    stack.addArrangedSubview(separator)
+    stack.addArrangedSubview(storageTitle)
+    stack.addArrangedSubview(textCapture)
+    stack.addArrangedSubview(fileCapture)
+    stack.addArrangedSubview(imageCapture)
+
+    let note = NSTextField(labelWithString: "已删除旧预览、多选连续粘贴、复杂外观设置。每日导出时间仍使用默认 00:05。")
+    note.textColor = .secondaryLabelColor
+    note.lineBreakMode = .byWordWrapping
+    note.maximumNumberOfLines = 2
+    stack.addArrangedSubview(note)
+
+    contentView = NSView()
+    contentView?.addSubview(stack)
+
+    NSLayoutConstraint.activate([
+      stack.leadingAnchor.constraint(equalTo: contentView!.leadingAnchor, constant: 24),
+      stack.trailingAnchor.constraint(equalTo: contentView!.trailingAnchor, constant: -24),
+      stack.topAnchor.constraint(equalTo: contentView!.topAnchor, constant: 22)
+    ])
+  }
+
+  private func loadDefaults() {
+    pasteByDefault.state = AppPreferences.pasteByDefault ? .on : .off
+    removeFormatting.state = AppPreferences.removeFormattingByDefault ? .on : .off
+    dailyExport.state = AppPreferences.dailyExportEnabled ? .on : .off
+    historySizeField.integerValue = AppPreferences.size
+
+    let enabled = AppPreferences.enabledPasteboardTypes
+    imageCapture.state = enabled.isDisjoint(with: StorageType.images.types) ? .off : .on
+    fileCapture.state = enabled.isDisjoint(with: StorageType.files.types) ? .off : .on
+    textCapture.state = enabled.isDisjoint(with: StorageType.text.types) ? .off : .on
+  }
+
+  @objc
+  private func saveDefaults() {
+    AppPreferences.pasteByDefault = pasteByDefault.state == .on
+    AppPreferences.removeFormattingByDefault = removeFormatting.state == .on
+    AppPreferences.dailyExportEnabled = dailyExport.state == .on
+    AppPreferences.size = max(100, historySizeField.integerValue)
+
+    var enabled = Set<NSPasteboard.PasteboardType>()
+    if imageCapture.state == .on {
+      enabled.formUnion(StorageType.images.types)
+    }
+    if fileCapture.state == .on {
+      enabled.formUnion(StorageType.files.types)
+    }
+    if textCapture.state == .on {
+      enabled.formUnion(StorageType.text.types)
+    }
+    AppPreferences.enabledPasteboardTypes = enabled
+    DailyExportScheduler.shared.reschedule()
   }
 }

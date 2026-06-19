@@ -1,5 +1,4 @@
 import ClipboardCore
-import Defaults
 import Foundation
 import Logging
 
@@ -26,14 +25,12 @@ final class DailyExportScheduler {
   private let logger = Logger(label: "com.local.MaccyLite.daily-export")
   private let calendar: Calendar = .current
   private let queue = DispatchQueue(label: "com.local.MaccyLite.daily-export", qos: .utility)
-  private var observations: [Defaults.Observation] = []
   private var timer: Timer?
 
   private init() {}
 
   func start() {
-    observeSettingsIfNeeded()
-    if Defaults[.dailyExportEnabled] {
+    if AppPreferences.dailyExportEnabled {
       queue.async { [weak self] in
         self?.catchUpMissingExports()
       }
@@ -85,20 +82,7 @@ final class DailyExportScheduler {
     }
   }
 
-  private func observeSettingsIfNeeded() {
-    guard observations.isEmpty else {
-      return
-    }
-
-    observations = [
-      Defaults.observe(.dailyExportEnabled) { [weak self] _ in self?.reschedule() },
-      Defaults.observe(.dailyExportHour) { [weak self] _ in self?.reschedule() },
-      Defaults.observe(.dailyExportMinute) { [weak self] _ in self?.reschedule() },
-      Defaults.observe(.dailyExportCatchUpDays) { [weak self] _ in self?.reschedule() }
-    ]
-  }
-
-  private func reschedule() {
+  func reschedule() {
     guard Thread.isMainThread else {
       DispatchQueue.main.async { [weak self] in
         self?.reschedule()
@@ -108,7 +92,7 @@ final class DailyExportScheduler {
 
     stop()
 
-    guard Defaults[.dailyExportEnabled] else {
+    guard AppPreferences.dailyExportEnabled else {
       return
     }
 
@@ -154,7 +138,7 @@ final class DailyExportScheduler {
         showBackgroundFailure(outcome)
       }
 
-      if Defaults[.dailyExportCleanupOrphans] {
+      if AppPreferences.dailyExportCleanupOrphans {
         _ = ClipboardCoreStore.shared.removeOrphanAssets()
       }
 
@@ -195,9 +179,9 @@ final class DailyExportScheduler {
 
   private func schedulePolicy() -> DailyExportSchedulePolicy {
     DailyExportSchedulePolicy(
-      hour: Defaults[.dailyExportHour],
-      minute: Defaults[.dailyExportMinute],
-      catchUpDays: Defaults[.dailyExportCatchUpDays],
+      hour: AppPreferences.dailyExportHour,
+      minute: AppPreferences.dailyExportMinute,
+      catchUpDays: AppPreferences.dailyExportCatchUpDays,
       calendar: calendar
     )
   }

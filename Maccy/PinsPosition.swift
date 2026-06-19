@@ -1,7 +1,6 @@
 import Foundation
-import Defaults
 
-enum PinsPosition: String, CaseIterable, Identifiable, CustomStringConvertible, Defaults.Serializable {
+enum PinsPosition: String, CaseIterable, Identifiable, CustomStringConvertible {
   case top
   case bottom
 

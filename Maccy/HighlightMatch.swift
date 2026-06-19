@@ -1,7 +1,6 @@
 import Foundation
-import Defaults
 
-enum HighlightMatch: String, CaseIterable, Identifiable, CustomStringConvertible, Defaults.Serializable {
+enum HighlightMatch: String, CaseIterable, Identifiable, CustomStringConvertible {
   case color
   case bold
   case italic

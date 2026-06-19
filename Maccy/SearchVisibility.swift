@@ -1,7 +1,6 @@
-import Defaults
 import Foundation
 
-enum SearchVisibility: String, CaseIterable, Identifiable, CustomStringConvertible, Defaults.Serializable {
+enum SearchVisibility: String, CaseIterable, Identifiable, CustomStringConvertible {
   case always
   case duringSearch
 

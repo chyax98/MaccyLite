@@ -1,6 +1,5 @@
-import Defaults
-import KeyboardShortcuts
-import SwiftUI
+import AppKit
+import Foundation
 
 class AppDelegate: NSObject, NSApplicationDelegate {
   var panel: AppKitHistoryPanel?
@@ -10,14 +9,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     statusItem.behavior = .removalAllowed
     statusItem.button?.action = #selector(performStatusItemClick)
-    statusItem.button?.image = Defaults[.menuIcon].image
+    statusItem.button?.image = AppPreferences.menuIcon.image
     statusItem.button?.imagePosition = .imageLeft
     statusItem.button?.target = self
     return statusItem
   }()
 
   private var isStatusItemDisabled: Bool {
-    Defaults[.ignoreEvents] || Defaults[.enabledPasteboardTypes].isEmpty
+    AppPreferences.ignoreEvents || AppPreferences.enabledPasteboardTypes.isEmpty
   }
 
   private var statusItemVisibilityObserver: NSKeyValueObservation?
@@ -27,63 +26,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Bridge FloatingPanel via AppDelegate.
     AppState.shared.appDelegate = self
 
-    Clipboard.shared.onNewCoreCopy { History.shared.add($0) }
+    Clipboard.shared.onNewCoreCopy { [weak self] item in
+      History.shared.add(item)
+      self?.refreshMenuIconText()
+    }
     Clipboard.shared.start()
     DailyExportScheduler.shared.start()
     DispatchQueue.global(qos: .utility).async {
       _ = ClipboardCoreStore.shared.generatePendingThumbnails(limit: 4)
     }
 
-    Task {
-      for await _ in Defaults.updates(.clipboardCheckInterval, initial: false) {
-        Clipboard.shared.restart()
-      }
-    }
-
     statusItemVisibilityObserver = observe(\.statusItem.isVisible, options: .new) { _, change in
-      if let newValue = change.newValue, Defaults[.showInStatusBar] != newValue {
-        Defaults[.showInStatusBar] = newValue
+      if let newValue = change.newValue, AppPreferences.showInStatusBar != newValue {
+        AppPreferences.showInStatusBar = newValue
       }
     }
 
-    Task {
-      for await value in Defaults.updates(.showInStatusBar) {
-        statusItem.isVisible = value
-      }
-    }
-
-    Task {
-      for await value in Defaults.updates(.menuIcon, initial: false) {
-        statusItem.button?.image = value.image
-      }
-    }
-
-    synchronizeMenuIconText()
-    Task {
-      for await value in Defaults.updates(.showRecentCopyInMenuBar) {
-        if value {
-          statusItem.button?.title = AppState.shared.menuIconText
-        } else {
-          statusItem.button?.title = ""
-        }
-      }
-    }
-
-    Task {
-      for await _ in Defaults.updates(.ignoreEvents) {
-        statusItem.button?.appearsDisabled = isStatusItemDisabled
-      }
-    }
-
-    Task {
-      for await _ in Defaults.updates(.enabledPasteboardTypes) {
-        statusItem.button?.appearsDisabled = isStatusItemDisabled
-      }
-    }
+    statusItem.isVisible = AppPreferences.showInStatusBar
+    refreshMenuIconText()
+    statusItem.button?.appearsDisabled = isStatusItemDisabled
   }
 
   func applicationDidFinishLaunching(_ aNotification: Notification) {
-    disableUnusedGlobalHotkeys()
+    HotKeyManager.shared.start()
   }
 
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -94,9 +59,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   func applicationWillTerminate(_ notification: Notification) {
     DailyExportScheduler.shared.stop()
 
-    if Defaults[.clearOnQuit] {
+    if AppPreferences.clearOnQuit {
       AppState.shared.history.clear()
     }
+    HotKeyManager.shared.stop()
   }
 
   @objc
@@ -105,12 +71,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       let modifierFlags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
       if modifierFlags.contains(.option) {
-        Defaults[.ignoreEvents].toggle()
+        AppPreferences.ignoreEvents.toggle()
 
         if modifierFlags.contains(.shift) {
-          Defaults[.ignoreOnlyNextEvent] = Defaults[.ignoreEvents]
+          AppPreferences.ignoreOnlyNextEvent = AppPreferences.ignoreEvents
         }
 
+        statusItem.button?.appearsDisabled = isStatusItemDisabled
         return
       }
     }
@@ -118,11 +85,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     togglePopup(height: AppState.shared.popup.height, at: .statusItem)
   }
 
-  func openPopup(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
+  func openPopup(height: CGFloat, at popupPosition: PopupPosition = AppPreferences.popupPosition) {
     popupPanel().open(height: height, at: popupPosition)
   }
 
-  func togglePopup(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
+  func togglePopup(height: CGFloat, at popupPosition: PopupPosition = AppPreferences.popupPosition) {
     popupPanel().toggle(height: height, at: popupPosition)
   }
 
@@ -138,21 +105,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     panel?.isOpen() == true
   }
 
-  private func synchronizeMenuIconText() {
-    _ = withObservationTracking {
-      AppState.shared.menuIconText
-    } onChange: {
-      DispatchQueue.main.async {
-        AppState.shared.appDelegate?.refreshMenuIconTextObservation()
-      }
-    }
-  }
-
-  private func refreshMenuIconTextObservation() {
-    if Defaults[.showRecentCopyInMenuBar] {
+  func refreshMenuIconText() {
+    if AppPreferences.showRecentCopyInMenuBar {
       statusItem.button?.title = AppState.shared.menuIconText
+    } else {
+      statusItem.button?.title = ""
     }
-    synchronizeMenuIconText()
   }
 
   @MainActor
@@ -162,7 +120,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     let workItem = DispatchWorkItem { [weak self] in
       guard let self else { return }
-      if Defaults[.showRecentCopyInMenuBar] {
+      if AppPreferences.showRecentCopyInMenuBar {
         self.statusItem.button?.title = AppState.shared.menuIconText
       } else {
         self.statusItem.button?.title = ""
@@ -172,28 +130,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: workItem)
   }
 
-  private func disableUnusedGlobalHotkeys() {
-    let names: [KeyboardShortcuts.Name] = [.delete, .pin]
-    KeyboardShortcuts.disable(names)
-
-    NotificationCenter.default.addObserver(
-      forName: Notification.Name("KeyboardShortcuts_shortcutByNameDidChange"),
-      object: nil,
-      queue: nil
-    ) { notification in
-      if let name = notification.userInfo?["name"] as? KeyboardShortcuts.Name, names.contains(name) {
-        KeyboardShortcuts.disable(name)
-      }
-    }
-  }
-
   private func popupPanel() -> AppKitHistoryPanel {
     if let panel {
       return panel
     }
 
     let panel = AppKitHistoryPanel(
-      contentRect: NSRect(origin: .zero, size: Defaults[.windowSize]),
+      contentRect: NSRect(origin: .zero, size: AppPreferences.windowSize),
       identifier: Bundle.main.bundleIdentifier ?? "com.local.MaccyLite",
       statusBarButton: statusItem.button
     )

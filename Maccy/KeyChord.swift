@@ -1,5 +1,4 @@
 import AppKit.NSEvent
-import KeyboardShortcuts
 import Sauce
 
 enum KeyChord: CaseIterable {
@@ -11,14 +10,10 @@ enum KeyChord: CaseIterable {
       .first { $0.action == #selector(NSText.paste) }
   }
 
-  static var deleteKey: Key? { Sauce.shared.key(shortcut: .delete) }
-  static var deleteModifiers: NSEvent.ModifierFlags? { KeyboardShortcuts.Shortcut(name: .delete)?.modifiers }
-
-  static var pinKey: Key? { Sauce.shared.key(shortcut: .pin) }
-  static var pinModifiers: NSEvent.ModifierFlags? { KeyboardShortcuts.Shortcut(name: .pin)?.modifiers }
-
-  static var previewKey: Key? { Sauce.shared.key(shortcut: .togglePreview) }
-  static var previewModifiers: NSEvent.ModifierFlags? { KeyboardShortcuts.Shortcut(name: .togglePreview)?.modifiers }
+  static let deleteKey: Key? = .delete
+  static let deleteModifiers: NSEvent.ModifierFlags? = .option
+  static let pinKey: Key? = .p
+  static let pinModifiers: NSEvent.ModifierFlags? = .option
 
   case clearHistory
   case clearHistoryAll
@@ -84,7 +79,7 @@ enum KeyChord: CaseIterable {
       self = .deleteLastWordFromSearch
     case (.downArrow, [.shift]),
          (.n, [.control, .shift]):
-      self = AppState.shared.multiSelectionEnabled ? .extendToNext : .moveToNext
+      self = .moveToNext
     case (.downArrow, []),
          (.n, [.control]),
          (.j, [.control]):
@@ -92,14 +87,14 @@ enum KeyChord: CaseIterable {
     case (.downArrow, [.command, .shift]),
          (.downArrow, [.option, .shift]),
          (.n, [.control, .option, .shift]):
-      self = AppState.shared.multiSelectionEnabled ? .extendToLast : .moveToLast
+      self = .moveToLast
     case (.downArrow, _) where modifierFlags.contains(.command) || modifierFlags.contains(.option),
          (.n, [.control, .option]),
          (.pageDown, []):
       self = .moveToLast
     case (.upArrow, [.shift]),
          (.p, [.control, .shift]):
-      self = AppState.shared.multiSelectionEnabled ? .extendToPrevious : .moveToPrevious
+      self = .moveToPrevious
     case (.upArrow, []),
          (.p, [.control]),
          (.k, [.control]):
@@ -107,7 +102,7 @@ enum KeyChord: CaseIterable {
     case (.upArrow, [.command, .shift]),
          (.upArrow, [.option, .shift]),
          (.p, [.control, .option, .shift]):
-      self = AppState.shared.multiSelectionEnabled ? .extendToFirst : .moveToFirst
+      self = .moveToFirst
     case (.upArrow, _) where modifierFlags.contains(.command) || modifierFlags.contains(.option),
          (.p, [.control, .option]),
          (.pageUp, []):
@@ -121,8 +116,6 @@ enum KeyChord: CaseIterable {
       self = .selectCurrentItem
     case (.escape, _):
       self = .close
-    case (KeyChord.previewKey, KeyChord.previewModifiers):
-      self = .togglePreview
     case (_, _) where !modifierFlags.isDisjoint(with: [.command, .control, .option]):
       self = .ignored
     default:

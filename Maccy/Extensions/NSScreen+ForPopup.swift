@@ -1,9 +1,8 @@
 import AppKit.NSScreen
-import Defaults
 
 extension NSScreen {
   static var forPopup: NSScreen? {
-    let desiredScreen = Defaults[.popupScreen]
+    let desiredScreen = AppPreferences.popupScreen
     if desiredScreen == 0 || desiredScreen > NSScreen.screens.count {
       return NSScreen.main
     } else {

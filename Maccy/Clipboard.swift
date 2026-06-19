@@ -1,6 +1,5 @@
 import AppKit
 import ClipboardCore
-import Defaults
 import Logging
 
 class Clipboard: @unchecked Sendable {
@@ -32,13 +31,13 @@ class Clipboard: @unchecked Sendable {
     .transient
   ]
 
-  private var enabledTypes: Set<NSPasteboard.PasteboardType> { Defaults[.enabledPasteboardTypes] }
+  private var enabledTypes: Set<NSPasteboard.PasteboardType> { AppPreferences.enabledPasteboardTypes }
   private var captureRules: ClipboardPasteboardCaptureRules {
     ClipboardPasteboardCaptureRules(
       supportedTypes: Set(supportedTypes.map(\.rawValue)),
       enabledTypes: Set(enabledTypes.map(\.rawValue)),
       ignoredTypes: Set(ignoredTypes.map(\.rawValue))
-        .union(Defaults[.ignoredPasteboardTypes])
+        .union(AppPreferences.ignoredPasteboardTypes)
     )
   }
 
@@ -54,7 +53,7 @@ class Clipboard: @unchecked Sendable {
 
   func start() {
     timer = Timer.scheduledTimer(
-      timeInterval: Defaults[.clipboardCheckInterval],
+      timeInterval: AppPreferences.clipboardCheckInterval,
       target: self,
       selector: #selector(checkForChangesInPasteboard),
       userInfo: nil,
@@ -119,7 +118,7 @@ class Clipboard: @unchecked Sendable {
   }
 
   func clear() {
-    guard Defaults[.clearSystemClipboard] else {
+    guard AppPreferences.clearSystemClipboard else {
       return
     }
 
@@ -137,16 +136,10 @@ class Clipboard: @unchecked Sendable {
 
     changeCount = pasteboard.changeCount
 
-    if pasteboard.pasteboardItems?.contains(where: { $0.types.contains(.fromMaccy) }) != true {
-      // External copy occurred. Stop the current paste stack.
-      // Maybe queue it into the paste stack? Configurable behaviour?
-      AppState.shared.history.interruptPasteStack()
-    }
-
-    if Defaults[.ignoreEvents] {
-      if Defaults[.ignoreOnlyNextEvent] {
-        Defaults[.ignoreEvents] = false
-        Defaults[.ignoreOnlyNextEvent] = false
+    if AppPreferences.ignoreEvents {
+      if AppPreferences.ignoreOnlyNextEvent {
+        AppPreferences.ignoreEvents = false
+        AppPreferences.ignoreOnlyNextEvent = false
       }
 
       return
@@ -249,15 +242,15 @@ class Clipboard: @unchecked Sendable {
   }
 
   private func shouldIgnore(_ sourceAppBundle: String) -> Bool {
-    if Defaults[.ignoreAllAppsExceptListed] {
-      return !Defaults[.ignoredApps].contains(sourceAppBundle)
+    if AppPreferences.ignoreAllAppsExceptListed {
+      return !AppPreferences.ignoredApps.contains(sourceAppBundle)
     } else {
-      return Defaults[.ignoredApps].contains(sourceAppBundle)
+      return AppPreferences.ignoredApps.contains(sourceAppBundle)
     }
   }
 
   private func shouldIgnore(_ item: NSPasteboardItem) -> Bool {
-    for regexp in Defaults[.ignoreRegexp] {
+    for regexp in AppPreferences.ignoreRegexp {
       if let string = item.string(forType: .string) {
         do {
           let regex = try NSRegularExpression(pattern: regexp)

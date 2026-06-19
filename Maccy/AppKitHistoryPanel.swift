@@ -1,5 +1,4 @@
 import AppKit
-import Defaults
 
 final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
   private let searchField = NSSearchField()
@@ -45,12 +44,12 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     configureContent()
   }
 
-  func toggle(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
+  func toggle(height: CGFloat, at popupPosition: PopupPosition = AppPreferences.popupPosition) {
     isPresented ? close() : open(height: height, at: popupPosition)
   }
 
-  func open(height: CGFloat, at popupPosition: PopupPosition = Defaults[.popupPosition]) {
-    let size = Defaults[.windowSize]
+  func open(height: CGFloat, at popupPosition: PopupPosition = AppPreferences.popupPosition) {
+    let size = AppPreferences.windowSize
     setContentSize(NSSize(width: size.width, height: size.height))
     setFrameOrigin(popupPosition.origin(size: frame.size, statusBarButton: statusBarButton))
     reload(query: searchField.stringValue)
@@ -275,7 +274,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
   private func updateFooter() {
     if let item = selectedItem() {
-      let action = Defaults[.pasteByDefault] ? "粘贴" : "复制"
+      let action = AppPreferences.pasteByDefault ? "粘贴" : "复制"
       footerLabel.stringValue = "Enter \(action) · Option+P Pin · Delete 删除 · \(item.copiedAt.formatted(date: .numeric, time: .shortened))"
     } else {
       footerLabel.stringValue = "没有历史记录"

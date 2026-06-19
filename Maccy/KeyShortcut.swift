@@ -1,5 +1,4 @@
 import AppKit.NSEvent
-import Defaults
 import Sauce
 
 struct KeyShortcut: Identifiable {
@@ -8,7 +7,7 @@ struct KeyShortcut: Identifiable {
     return [
       KeyShortcut(key: key),
       KeyShortcut(key: key, modifierFlags: [.option]),
-      KeyShortcut(key: key, modifierFlags: [Defaults[.pasteByDefault] ? .command : .option, .shift])
+      KeyShortcut(key: key, modifierFlags: [AppPreferences.pasteByDefault ? .command : .option, .shift])
     ]
   }
 

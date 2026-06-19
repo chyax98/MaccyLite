@@ -1,8 +1,7 @@
 import AppKit.NSEvent
-import Defaults
 import Foundation
 
-enum PopupPosition: String, CaseIterable, Identifiable, CustomStringConvertible, Defaults.Serializable {
+enum PopupPosition: String, CaseIterable, Identifiable, CustomStringConvertible {
   case cursor
   case statusItem
   case window
@@ -52,7 +51,7 @@ enum PopupPosition: String, CaseIterable, Identifiable, CustomStringConvertible,
       }
     case .lastPosition:
       if let frame = NSScreen.forPopup?.visibleFrame {
-        let relativePos = Defaults[.windowPosition]
+        let relativePos = AppPreferences.windowPosition
         let anchorX = frame.minX + frame.width * relativePos.x
         let anchorY = frame.minY + frame.height * relativePos.y
         // Anchor is top middle of frame

@@ -1,7 +1,6 @@
 import AppKit
-import Defaults
 
-enum MenuIcon: String, CaseIterable, Identifiable, Defaults.Serializable {
+enum MenuIcon: String, CaseIterable, Identifiable {
   case maccy
   case clipboard
   case scissors

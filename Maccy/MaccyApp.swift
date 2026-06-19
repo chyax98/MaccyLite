@@ -1,17 +1,13 @@
-import SwiftUI
+import AppKit
 
 @main
-struct MaccyApp: App {
-  @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+enum MaccyApp {
+  private static let appDelegate = AppDelegate()
 
-  // It's impossible to create sceneless application,
-  // so we are hacking this around by creating a menubar
-  // scene that is always hidden.
-  @State private var hiddenMenu: Bool = false
-
-  var body: some Scene {
-    MenuBarExtra("", isInserted: $hiddenMenu) {
-      EmptyView()
-    }
+  static func main() {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    app.delegate = appDelegate
+    app.run()
   }
 }
