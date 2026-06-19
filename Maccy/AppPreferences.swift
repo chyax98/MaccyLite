@@ -138,7 +138,7 @@ enum AppPreferences {
   }
 
   static var popupPosition: PopupPosition {
-    get { PopupPosition(rawValue: string("popupPosition", PopupPosition.cursor.rawValue)) ?? .cursor }
+    get { PopupPosition(rawValue: string("popupPosition", PopupPosition.center.rawValue)) ?? .center }
     set { set(newValue.rawValue, "popupPosition") }
   }
 
@@ -169,8 +169,8 @@ enum AppPreferences {
 
   static var windowSize: NSSize {
     get {
-      let width = max(double("windowSize.width", 980), 860)
-      let height = max(double("windowSize.height", 720), 620)
+      let width = max(double("windowSize.width", 820), 740)
+      let height = max(double("windowSize.height", 580), 520)
       return NSSize(width: width, height: height)
     }
     set {
