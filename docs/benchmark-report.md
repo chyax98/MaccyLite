@@ -1,5 +1,78 @@
 # Benchmark Report
 
+## 2026-06-19 Full Performance Gate
+
+Command:
+
+```sh
+TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
+```
+
+Result:
+
+```text
+mode=text
+items=100000
+runs=20
+insert_ms=35021.141666
+latest_ms=0.2762915
+latest_min_ms=0.238375
+latest_p50_ms=0.2762915
+latest_p95_ms=0.4640131500000021
+latest_max_ms=3.220042
+cjk_search_ms=1.798521
+cjk_search_min_ms=1.730542
+cjk_search_p50_ms=1.798521
+cjk_search_p95_ms=2.0929274
+cjk_search_max_ms=2.112125
+token_search_ms=1.5670625
+token_search_min_ms=1.512
+token_search_p50_ms=1.5670625
+token_search_p95_ms=1.6792729
+token_search_max_ms=1.720083
+pending_thumbnail_jobs=0
+pending_thumbnail_jobs_ms=8.038499999999999
+pending_thumbnail_jobs_min_ms=7.302625
+pending_thumbnail_jobs_p50_ms=8.038499999999999
+pending_thumbnail_jobs_p95_ms=10.748880600000014
+pending_thumbnail_jobs_max_ms=28.489458
+asset_bytes=0
+
+mode=mixed
+items=10000
+runs=20
+insert_ms=8777.28025
+latest_ms=0.1625625
+latest_min_ms=0.152625
+latest_p50_ms=0.1625625
+latest_p95_ms=0.20756185000000027
+latest_max_ms=0.571333
+cjk_search_ms=10.923625000000001
+cjk_search_min_ms=10.729125
+cjk_search_p50_ms=10.923625000000001
+cjk_search_p95_ms=11.40943305
+cjk_search_max_ms=12.116709
+token_search_ms=11.0995205
+token_search_min_ms=10.937041
+token_search_p50_ms=11.0995205
+token_search_p95_ms=11.70220835
+token_search_max_ms=11.834417
+pending_thumbnail_jobs=1666
+pending_thumbnail_jobs_ms=1.9596870000000002
+pending_thumbnail_jobs_min_ms=1.885667
+pending_thumbnail_jobs_p50_ms=1.9596870000000002
+pending_thumbnail_jobs_p95_ms=2.239420800000003
+pending_thumbnail_jobs_max_ms=6.341916
+asset_bytes=114651068
+performance validation passed
+```
+
+Interpretation:
+
+- latest page p95 is below the `20 ms` target in both text and mixed datasets.
+- CJK and token search p95 are below the `50 ms` target in both datasets.
+- mixed mode confirms large text/image asset storage and pending thumbnail jobs.
+
 ## 2026-06-19 ClipboardCore 100k Text
 
 Quick regression gate:
@@ -125,6 +198,7 @@ Interpretation:
 - The first failed run exposed a real issue: common terms routed directly to full FTS + recency sort took `200 ms+`.
 - The fix is now implemented in `ClipboardDatabase.search`: search recent bounded rows first, return immediately when enough results exist, and only expand to FTS when recent results are insufficient.
 
-Remaining benchmark work:
+Runtime sampling:
 
-- Add AppShell runtime sampling for pasteboard capture and thumbnail generation.
+- AppShell logs pasteboard capture and thumbnail generation samples.
+- Slow capture/thumbnail samples are promoted to warning according to `ClipboardRuntimePerformancePolicy`.

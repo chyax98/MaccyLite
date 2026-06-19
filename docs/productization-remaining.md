@@ -54,7 +54,6 @@
 
 ## 当前下一步
 
-1. 跑一次 full release benchmark，更新 `docs/benchmark-report.md`。
-2. 按 `docs/manual-acceptance.md` 做人工验收。
-3. 明确旧 Maccy 数据不迁移，或另开迁移任务。
-4. 人工验收失败项转成可回归测试或明确修复任务。
+1. 按 `docs/manual-acceptance.md` 做人工验收。
+2. 明确旧 Maccy 数据不迁移，或另开迁移任务。
+3. 人工验收失败项转成可回归测试或明确修复任务。
