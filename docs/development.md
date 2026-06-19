@@ -84,6 +84,18 @@ swift run --package-path ClipboardCore -c release clipboard-benchmark 100000 tex
 swift run --package-path ClipboardCore -c release clipboard-benchmark 10000 mixed --runs 20
 ```
 
+带阈值的性能回归验证：
+
+```sh
+scripts/validate-performance.sh
+```
+
+默认数据集较小，用于本地快速回归；完整压测可以覆盖默认参数：
+
+```sh
+TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
+```
+
 数据库健康检查和重建索引：
 
 ```sh

@@ -26,8 +26,8 @@
   - 真实 `NSPasteboard` 只能人工验收。
   - 可继续把类型选择/过滤/大对象策略拆成纯函数后测试，降低手测压力。
 - 性能基准回归：
-  - 已有 benchmark 数字。
-  - 还需要脚本化输出，并在文档中记录目标阈值和最近一次结果。
+  - 已有 benchmark 数字和 `scripts/validate-performance.sh` 阈值脚本。
+  - 还需要 AppShell runtime sampling，覆盖真实 pasteboard capture 和 thumbnail generation。
 
 ## 还需要人工验收
 
@@ -50,5 +50,5 @@
 
 1. 抽出 `DailyExportScheduler` 可测边界，补非 GUI 测试。
 2. 抽出 `Clipboard.swift` 的 pasteboard 类型选择逻辑，补纯函数测试。
-3. 跑一次 release benchmark，更新 `docs/benchmark-report.md`。
+3. 跑一次 full release benchmark，更新 `docs/benchmark-report.md`。
 4. 按 `docs/manual-acceptance.md` 做人工验收，并把失败项转成可回归测试或明确修复任务。

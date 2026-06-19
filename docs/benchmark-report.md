@@ -2,6 +2,26 @@
 
 ## 2026-06-19 ClipboardCore 100k Text
 
+Quick regression gate:
+
+```sh
+scripts/validate-performance.sh
+```
+
+Full benchmark gate:
+
+```sh
+TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
+```
+
+Default thresholds:
+
+- latest page p95 <= `20 ms`
+- CJK search p95 <= `50 ms`
+- token search p95 <= `50 ms`
+- pending thumbnail job query p95 <= `50 ms`
+- mixed benchmark must create asset files and pending thumbnail jobs
+
 Command:
 
 ```sh
