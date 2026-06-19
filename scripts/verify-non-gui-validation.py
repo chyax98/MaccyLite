@@ -168,6 +168,7 @@ require_text(
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/write-automatic-evidence.sh",
   "scripts/build-local-app.sh",
+  "scripts/prepare-manual-acceptance-record.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
   "docs/manual-acceptance.md",
@@ -189,6 +190,7 @@ require_text(
   "scripts/validate-maintenance.sh",
   "scripts/validate-performance.sh",
   "scripts/write-automatic-evidence.sh",
+  "scripts/prepare-manual-acceptance-record.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
   "FULL_PERFORMANCE=1",
@@ -207,6 +209,7 @@ require_text(
   "dist/local/MaccyLite.app",
   "scripts/write-automatic-evidence.sh",
   "dist/validation/automatic-evidence.md",
+  "scripts/prepare-manual-acceptance-record.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
   "scripts/validate-productization.sh",
@@ -217,6 +220,7 @@ require_text(
 require_text(
   "docs/manual-acceptance-record.md",
   "## Build",
+  "scripts/prepare-manual-acceptance-record.sh",
   "scripts/validate-manual-acceptance-record.py",
   "当前仓库 HEAD",
   "退出码为 0",
@@ -253,6 +257,7 @@ require_text(
 require_text(
   "docs/productization-remaining.md",
   "docs/manual-acceptance-record.md",
+  "scripts/prepare-manual-acceptance-record.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
 )
@@ -296,6 +301,15 @@ require_text(
   "dist/local",
 )
 require_text(
+  "scripts/prepare-manual-acceptance-record.sh",
+  "docs/manual-acceptance-record.md",
+  "sw_vers -productVersion",
+  "git rev-parse --short HEAD",
+  "dist/validation/automatic-evidence.md",
+  "dist/local/MaccyLite.app",
+  "通过 / 有问题",
+)
+require_text(
   "scripts/write-automatic-evidence.sh",
   "scripts/validate-productization.sh",
   "dist/validation/automatic-evidence.md",
@@ -325,6 +339,7 @@ require_text(
   "productization completion validation passed",
 )
 require_executable("scripts/build-local-app.sh")
+require_executable("scripts/prepare-manual-acceptance-record.sh")
 require_executable("scripts/write-automatic-evidence.sh")
 require_executable("scripts/validate-manual-acceptance-record.py")
 require_executable("scripts/validate-productization-complete.sh")

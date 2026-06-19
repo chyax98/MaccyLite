@@ -28,6 +28,12 @@ scripts/validate-productization.sh
 scripts/write-automatic-evidence.sh
 ```
 
+人工验收前填充记录元数据：
+
+```sh
+scripts/prepare-manual-acceptance-record.sh
+```
+
 人工验收记录填完后运行：
 
 ```sh

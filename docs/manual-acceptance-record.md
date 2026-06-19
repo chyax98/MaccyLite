@@ -2,6 +2,12 @@
 
 这份文件用于记录真实 macOS session 的人工验收结果。产品化关闭前，把 `docs/manual-acceptance.md` 的检查结果同步到这里。
 
+开始人工验收前可先运行：
+
+```sh
+scripts/prepare-manual-acceptance-record.sh
+```
+
 填写完成后运行：
 
 ```sh
