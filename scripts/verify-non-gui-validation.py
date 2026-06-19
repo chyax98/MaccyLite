@@ -48,6 +48,39 @@ def require_text(path: str, *snippets: str) -> None:
       fail(f"{path} must mention {snippet}")
 
 
+def require_tracked(path: str, tracked_files: set[str]) -> None:
+  if path not in tracked_files:
+    fail(f"required tracked file is missing from git: {path}")
+
+
+def package_pins(path: str) -> dict[str, dict]:
+  data = json.loads(require_file(path))
+  pins = {}
+  for pin in data.get("pins", []):
+    identity = pin.get("identity")
+    if identity:
+      pins[identity] = pin
+  return pins
+
+
+def require_package_pin(path: str, identity: str, location: str, version: str) -> None:
+  pins = package_pins(path)
+  pin = pins.get(identity)
+  if not pin:
+    fail(f"{path} must pin {identity}")
+  if pin.get("location") != location:
+    fail(f"{path} must pin {identity} from {location}")
+  if pin.get("state", {}).get("version") != version:
+    fail(f"{path} must pin {identity} version {version}")
+
+
+def reject_package_pins(path: str, forbidden_identities: set[str]) -> None:
+  pins = package_pins(path)
+  forbidden = sorted(forbidden_identities.intersection(pins.keys()))
+  if forbidden:
+    fail(f"{path} still pins removed packages: {', '.join(forbidden)}")
+
+
 def strings_keys(path: Path) -> set[str]:
   text = path.read_text(errors="ignore")
   return set(re.findall(r'^\s*"((?:\\.|[^"\\])*)"\s*=', text, re.MULTILINE))
@@ -87,7 +120,9 @@ def verify_static_localization_references() -> None:
         require_localized_key("Localizable", key, path)
 
 
-for tracked_path in git_tracked_files():
+tracked_files = set(git_tracked_files())
+
+for tracked_path in tracked_files:
   if (
     tracked_path == ".build"
     or tracked_path.startswith(".build/")
@@ -99,6 +134,9 @@ for tracked_path in git_tracked_files():
     or ".xcuserdata/" in tracked_path
   ):
     fail(f"generated file is tracked by git: {tracked_path}")
+
+require_tracked("ClipboardCore/Package.resolved", tracked_files)
+require_tracked("Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved", tracked_files)
 
 require_text(
   "README.md",
@@ -225,6 +263,8 @@ if product_types != ["com.apple.product-type.application"]:
 package_manifest = (ROOT / "ClipboardCore/Package.swift").read_text()
 if "GRDB.swift.git" not in package_manifest:
   fail("ClipboardCore package must keep GRDB as the explicit SQLite dependency")
+if "from: \"7.5.0\"" not in package_manifest:
+  fail("ClipboardCore package must keep the documented GRDB minimum version")
 
 for forbidden in [
   "Sparkle",
@@ -236,6 +276,28 @@ for forbidden in [
 ]:
   if forbidden in package_manifest:
     fail(f"ClipboardCore package manifest should not depend on app/UI package {forbidden}")
+
+removed_package_identities = {
+  "sparkle",
+  "fuse",
+}
+require_package_pin(
+  "ClipboardCore/Package.resolved",
+  "grdb.swift",
+  "https://github.com/groue/GRDB.swift.git",
+  "7.11.1",
+)
+require_package_pin(
+  "Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+  "grdb.swift",
+  "https://github.com/groue/GRDB.swift.git",
+  "7.11.1",
+)
+reject_package_pins("ClipboardCore/Package.resolved", removed_package_identities)
+reject_package_pins(
+  "Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+  removed_package_identities,
+)
 
 for forbidden_path in [
   ".github",
