@@ -127,8 +127,8 @@ class Clipboard: @unchecked Sendable {
   }
 
   @discardableResult
-  func paste() -> Bool {
-    PasteController.shared.paste()
+  func paste(to targetApplication: NSRunningApplication? = nil) -> Bool {
+    PasteController.shared.paste(to: targetApplication)
   }
 
   func clear() {

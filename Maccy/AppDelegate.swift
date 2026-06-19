@@ -3,6 +3,7 @@ import Foundation
 
 class AppDelegate: NSObject, NSApplicationDelegate {
   var panel: AppKitHistoryPanel?
+  private var pasteTargetApplication: NSRunningApplication?
 
   @objc
   private lazy var statusItem: NSStatusItem = {
@@ -116,15 +117,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func openPopup(height: CGFloat, at popupPosition: PopupPosition = AppPreferences.popupPosition) {
+    pasteTargetApplication = NSWorkspace.shared.frontmostApplication
     popupPanel().open(height: height, at: popupPosition)
   }
 
   func togglePopup(height: CGFloat, at popupPosition: PopupPosition = AppPreferences.popupPosition) {
-    popupPanel().toggle(height: height, at: popupPosition)
+    let panel = popupPanel()
+    if !panel.isOpen() {
+      pasteTargetApplication = NSWorkspace.shared.frontmostApplication
+    }
+    panel.toggle(height: height, at: popupPosition)
   }
 
   func closePopup() {
     panel?.close()
+  }
+
+  func targetApplicationForPaste() -> NSRunningApplication? {
+    pasteTargetApplication
   }
 
   func resizePopup(to height: CGFloat) {

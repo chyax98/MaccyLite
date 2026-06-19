@@ -77,8 +77,14 @@ class History {
       guard !AppPreferences.pasteByDefault || checkAccessibilityForPaste() else {
         return
       }
+      let targetApplication = AppPreferences.pasteByDefault ? AppState.shared.appDelegate?.targetApplicationForPaste() : nil
       AppState.shared.popup.close()
-      copy(item, removeFormatting: AppPreferences.removeFormattingByDefault, pasteAfter: AppPreferences.pasteByDefault)
+      copy(
+        item,
+        removeFormatting: AppPreferences.removeFormattingByDefault,
+        pasteAfter: AppPreferences.pasteByDefault,
+        targetApplication: targetApplication
+      )
     } else {
       switch HistoryItemAction(modifierFlags) {
       case .copy:
@@ -88,14 +94,16 @@ class History {
         guard checkAccessibilityForPaste() else {
           return
         }
+        let targetApplication = AppState.shared.appDelegate?.targetApplicationForPaste()
         AppState.shared.popup.close()
-        copy(item, pasteAfter: true)
+        copy(item, pasteAfter: true, targetApplication: targetApplication)
       case .pasteWithoutFormatting:
         guard checkAccessibilityForPaste() else {
           return
         }
+        let targetApplication = AppState.shared.appDelegate?.targetApplicationForPaste()
         AppState.shared.popup.close()
-        copy(item, removeFormatting: true, pasteAfter: true)
+        copy(item, removeFormatting: true, pasteAfter: true, targetApplication: targetApplication)
       case .unknown:
         return
       }
@@ -111,15 +119,22 @@ class History {
       return
     }
 
+    let targetApplication = AppState.shared.appDelegate?.targetApplicationForPaste()
     AppState.shared.popup.close()
-    copy(item, removeFormatting: AppPreferences.removeFormattingByDefault, pasteAfter: true)
+    copy(
+      item,
+      removeFormatting: AppPreferences.removeFormattingByDefault,
+      pasteAfter: true,
+      targetApplication: targetApplication
+    )
   }
 
   @MainActor
   private func copy(
     _ item: ClipboardListItem,
     removeFormatting: Bool = false,
-    pasteAfter: Bool = false
+    pasteAfter: Bool = false,
+    targetApplication: NSRunningApplication? = nil
   ) {
     let itemID = item.id
     Task {
@@ -143,7 +158,7 @@ class History {
         Clipboard.shared.copy(contents: prepared.1, sourceApp: prepared.0)
         updateMenuText(item.displayText)
         if pasteAfter {
-          if !Clipboard.shared.paste() {
+          if !Clipboard.shared.paste(to: targetApplication) {
             AppState.shared.appDelegate?.showTransientStatus("需要辅助功能权限才能自动粘贴")
           }
         }

@@ -18,12 +18,37 @@ final class PasteController {
 
   // Based on https://github.com/Clipy/Clipy/blob/develop/Clipy/Sources/Services/PasteService.swift.
   @discardableResult
-  func paste() -> Bool {
+  func paste(to targetApplication: NSRunningApplication? = nil) -> Bool {
     guard Accessibility.check() else {
       logger.warning("Automatic paste skipped because Accessibility permission is not granted.")
       return false
     }
 
+    if let targetApplication,
+       !targetApplication.isTerminated,
+       targetApplication.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+      targetApplication.activate(options: [])
+      postPasteShortcut(whenFrontmost: targetApplication, remainingAttempts: 6)
+      return true
+    }
+
+    postPasteShortcut()
+    return true
+  }
+
+  private func postPasteShortcut(whenFrontmost targetApplication: NSRunningApplication, remainingAttempts: Int) {
+    let frontmostProcessID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    if frontmostProcessID == targetApplication.processIdentifier || remainingAttempts <= 0 {
+      postPasteShortcut()
+      return
+    }
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+      self?.postPasteShortcut(whenFrontmost: targetApplication, remainingAttempts: remainingAttempts - 1)
+    }
+  }
+
+  private func postPasteShortcut() {
     // Add flag that left/right modifier key has been pressed.
     // See https://github.com/TermiT/Flycut/pull/18 for details.
     let cmdFlag = CGEventFlags(rawValue: UInt64(pasteKeyModifiers.rawValue) | 0x000008)
@@ -41,6 +66,5 @@ final class PasteController {
     keyVUp?.flags = cmdFlag
     keyVDown?.post(tap: .cgSessionEventTap)
     keyVUp?.post(tap: .cgSessionEventTap)
-    return true
   }
 }

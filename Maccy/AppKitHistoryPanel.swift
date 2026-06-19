@@ -928,6 +928,8 @@ private final class HistoryTableView: NSTableView {
       return
     }
 
-    onDoubleClickRow?(clickedRow)
+    DispatchQueue.main.async { [weak self] in
+      self?.onDoubleClickRow?(clickedRow)
+    }
   }
 }
