@@ -155,17 +155,20 @@ struct StorageSettingsPane: View {
         HStack {
           Button("导出昨天") {
             exportStatus = "导出中..."
-            DailyExportScheduler.shared.exportYesterday { url in
-              exportStatus = exportMessage(url)
+            DailyExportScheduler.shared.exportYesterday { outcome in
+              exportStatus = exportMessage(outcome)
               refreshStorageSize()
             }
           }
           Button("导出今天") {
             exportStatus = "导出中..."
-            DailyExportScheduler.shared.exportToday { url in
-              exportStatus = exportMessage(url)
+            DailyExportScheduler.shared.exportToday { outcome in
+              exportStatus = exportMessage(outcome)
               refreshStorageSize()
             }
+          }
+          Button("打开导出目录") {
+            openExportDirectory()
           }
         }
 
@@ -184,12 +187,12 @@ struct StorageSettingsPane: View {
     }
   }
 
-  private func exportMessage(_ url: URL?) -> String {
-    if let url {
+  private func exportMessage(_ outcome: DailyExportOutcome) -> String {
+    if let url = outcome.url {
       return "已导出：\(url.path)"
     }
 
-    return "导出失败"
+    return "导出失败：\(outcome.errorMessage ?? "未知错误")"
   }
 
   private var exportDirectoryPath: String {
@@ -202,6 +205,15 @@ struct StorageSettingsPane: View {
         ClipboardCoreStore.shared.storageSize
       }.value
       storageSize = size
+    }
+  }
+
+  private func openExportDirectory() {
+    do {
+      let directory = try ClipboardCoreStore.shared.ensureExportDirectoryExists()
+      NSWorkspace.shared.open(directory)
+    } catch {
+      exportStatus = "无法打开导出目录：\(error.localizedDescription)"
     }
   }
 

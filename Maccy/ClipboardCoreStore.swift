@@ -56,8 +56,8 @@ final class ClipboardCoreStore {
   }
 
   @discardableResult
-  func export(day: Date) -> DailyExportResult? {
-    try? dailyExporter().export(day: day)
+  func export(day: Date) throws -> DailyExportResult {
+    try dailyExporter().export(day: day)
   }
 
   func exportRecord(day: Date) -> DailyExportRecord? {
@@ -123,6 +123,12 @@ final class ClipboardCoreStore {
 
   var exportDirectory: URL {
     return defaultExportDirectory
+  }
+
+  func ensureExportDirectoryExists() throws -> URL {
+    let directory = exportDirectory
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    return directory
   }
 
   func data(for content: ClipboardStoredContent) -> Data? {

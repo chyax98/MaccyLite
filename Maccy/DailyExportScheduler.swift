@@ -3,6 +3,23 @@ import Defaults
 import Foundation
 import Logging
 
+struct DailyExportOutcome {
+  let url: URL?
+  let errorMessage: String?
+
+  var succeeded: Bool {
+    url != nil && errorMessage == nil
+  }
+
+  static func success(_ result: DailyExportResult) -> DailyExportOutcome {
+    DailyExportOutcome(url: result.url, errorMessage: nil)
+  }
+
+  static func failure(_ message: String) -> DailyExportOutcome {
+    DailyExportOutcome(url: nil, errorMessage: message)
+  }
+}
+
 final class DailyExportScheduler {
   static let shared = DailyExportScheduler()
 
@@ -30,33 +47,33 @@ final class DailyExportScheduler {
   }
 
   @discardableResult
-  func exportToday() -> URL? {
-    export(day: Date.now)?.url
+  func exportToday() -> DailyExportOutcome {
+    export(day: Date.now)
   }
 
-  func exportToday(completion: @escaping @MainActor (URL?) -> Void) {
+  func exportToday(completion: @escaping @MainActor (DailyExportOutcome) -> Void) {
     queue.async { [weak self] in
-      let url = self?.exportToday()
+      let outcome = self?.exportToday() ?? .failure("导出器不可用")
       DispatchQueue.main.async {
-        completion(url)
+        completion(outcome)
       }
     }
   }
 
   @discardableResult
-  func exportYesterday() -> URL? {
+  func exportYesterday() -> DailyExportOutcome {
     guard let yesterday = calendar.date(byAdding: .day, value: -1, to: Date.now) else {
-      return nil
+      return .failure("无法计算昨天日期")
     }
 
-    return export(day: yesterday)?.url
+    return export(day: yesterday)
   }
 
-  func exportYesterday(completion: @escaping @MainActor (URL?) -> Void) {
+  func exportYesterday(completion: @escaping @MainActor (DailyExportOutcome) -> Void) {
     queue.async { [weak self] in
-      let url = self?.exportYesterday()
+      let outcome = self?.exportYesterday() ?? .failure("导出器不可用")
       DispatchQueue.main.async {
-        completion(url)
+        completion(outcome)
       }
     }
   }
@@ -124,13 +141,14 @@ final class DailyExportScheduler {
     }
   }
 
-  private func export(day: Date) -> DailyExportResult? {
-    if let result = ClipboardCoreStore.shared.export(day: day) {
+  private func export(day: Date) -> DailyExportOutcome {
+    do {
+      let result = try ClipboardCoreStore.shared.export(day: day)
       logger.info("Exported \(result.itemCount) clipboard items to \(result.url.path)")
-      return result
-    } else {
-      logger.error("Failed to export clipboard items for \(day)")
-      return nil
+      return .success(result)
+    } catch {
+      logger.error("Failed to export clipboard items for \(day): \(error.localizedDescription)")
+      return .failure(error.localizedDescription)
     }
   }
 
