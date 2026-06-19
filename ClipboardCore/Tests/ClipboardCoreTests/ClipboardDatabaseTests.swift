@@ -85,6 +85,69 @@ func databaseMergesDuplicateClipboardItems() throws {
 }
 
 @Test
+func databaseMergesSameTextIgnoringRichSidecarsAndKeepsLatestPayload() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+  let textData = Data("重复复制内容".utf8)
+  let htmlData = Data("<p>重复复制内容</p>".utf8)
+
+  let first = try database.insert(ClipboardItemDraft(
+    id: "plain-copy",
+    copiedAt: Date(timeIntervalSince1970: 1),
+    sourceApp: "plain.app",
+    primaryType: ClipboardContentType.plainText,
+    displayText: "重复复制内容",
+    searchText: "重复复制内容",
+    contents: [
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.plainText,
+        byteCount: textData.count,
+        inlineData: textData,
+        assetPath: nil,
+        contentHash: AssetStore.sha256(textData)
+      )
+    ]
+  ))
+
+  let second = try database.insert(ClipboardItemDraft(
+    id: "rich-copy",
+    copiedAt: Date(timeIntervalSince1970: 2),
+    sourceApp: "rich.app",
+    primaryType: ClipboardContentType.html,
+    displayText: "重复复制内容",
+    searchText: "重复复制内容",
+    contents: [
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.plainText,
+        byteCount: textData.count,
+        inlineData: textData,
+        assetPath: nil,
+        contentHash: AssetStore.sha256(textData)
+      ),
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.html,
+        byteCount: htmlData.count,
+        inlineData: htmlData,
+        assetPath: nil,
+        contentHash: AssetStore.sha256(htmlData)
+      )
+    ]
+  ))
+
+  #expect(second.id == first.id)
+  #expect(try database.latest().map(\.id) == [first.id])
+
+  let stored = try #require(try database.item(id: first.id))
+  #expect(stored.copyCount == 2)
+  #expect(stored.sourceApp == "rich.app")
+  #expect(stored.primaryType == ClipboardContentType.html)
+  #expect(stored.contents.map(\.pasteboardType) == [
+    ClipboardContentType.plainText,
+    ClipboardContentType.html
+  ])
+}
+
+@Test
 func databaseListAndSearchHideLegacyDuplicateFingerprints() throws {
   let directory = try temporaryDirectory()
   let path = directory.appending(path: "Clipboard.sqlite")

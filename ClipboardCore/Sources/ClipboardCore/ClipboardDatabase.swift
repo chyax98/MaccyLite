@@ -77,7 +77,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         SELECT id
         FROM clipboard_items
         WHERE content_fingerprint = ?
-        ORDER BY copied_at DESC
+        ORDER BY is_pinned DESC, copied_at DESC
         LIMIT 1
         """,
         arguments: [fingerprint]
@@ -87,15 +87,26 @@ public final class ClipboardDatabase: @unchecked Sendable {
           UPDATE clipboard_items
           SET copied_at = ?,
               source_app = ?,
+              primary_type = ?,
+              display_text = ?,
+              search_text = ?,
+              content_fingerprint = ?,
+              has_image = ?,
               copy_count = copy_count + 1
           WHERE id = ?
           """,
           arguments: [
             item.copiedAt.timeIntervalSince1970,
             item.sourceApp,
+            item.primaryType,
+            item.displayText,
+            item.searchText,
+            fingerprint,
+            itemHasImage(item),
             existingID
           ]
         )
+        try replacePayloadAndIndexes(for: existingID, with: item, db: db)
 
         guard let stored = try storedItem(id: existingID, db: db) else {
           throw ClipboardDatabaseError.insertedItemMissing(existingID)
@@ -126,39 +137,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
         ]
       )
 
-      for content in item.contents {
-        try db.execute(
-          sql: """
-          INSERT INTO clipboard_contents
-            (
-              item_id, pasteboard_type, byte_count, inline_data, asset_path, content_hash,
-              image_width, image_height
-            )
-          VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?)
-          """,
-          arguments: [
-            item.id,
-            content.pasteboardType,
-            content.byteCount,
-            content.inlineData,
-            content.assetPath,
-            content.contentHash,
-            content.imageWidth,
-            content.imageHeight
-          ]
-        )
-      }
-
-      try db.execute(
-        sql: "INSERT INTO clipboard_search(item_id, text) VALUES (?, ?)",
-        arguments: [item.id, item.searchText]
-      )
-
-      try db.execute(
-        sql: "INSERT INTO clipboard_trigram(item_id, text) VALUES (?, ?)",
-        arguments: [item.id, item.searchText]
-      )
+      try insertPayloadAndIndexes(for: item.id, from: item, db: db)
 
       guard let stored = try storedItem(id: item.id, db: db) else {
         throw ClipboardDatabaseError.insertedItemMissing(item.id)
@@ -897,8 +876,95 @@ public final class ClipboardDatabase: @unchecked Sendable {
     }
   }
 
+  private func replacePayloadAndIndexes(
+    for itemID: String,
+    with item: ClipboardItemDraft,
+    db: Database
+  ) throws {
+    try db.execute(sql: "DELETE FROM clipboard_contents WHERE item_id = ?", arguments: [itemID])
+    try db.execute(sql: "DELETE FROM clipboard_search WHERE item_id = ?", arguments: [itemID])
+    try db.execute(sql: "DELETE FROM clipboard_trigram WHERE item_id = ?", arguments: [itemID])
+    try insertPayloadAndIndexes(for: itemID, from: item, db: db)
+  }
+
+  private func insertPayloadAndIndexes(
+    for itemID: String,
+    from item: ClipboardItemDraft,
+    db: Database
+  ) throws {
+    for content in item.contents {
+      try db.execute(
+        sql: """
+        INSERT INTO clipboard_contents
+          (
+            item_id, pasteboard_type, byte_count, inline_data, asset_path, content_hash,
+            image_width, image_height
+          )
+        VALUES
+          (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        arguments: [
+          itemID,
+          content.pasteboardType,
+          content.byteCount,
+          content.inlineData,
+          content.assetPath,
+          content.contentHash,
+          content.imageWidth,
+          content.imageHeight
+        ]
+      )
+    }
+
+    try db.execute(
+      sql: "INSERT INTO clipboard_search(item_id, text) VALUES (?, ?)",
+      arguments: [itemID, item.searchText]
+    )
+
+    try db.execute(
+      sql: "INSERT INTO clipboard_trigram(item_id, text) VALUES (?, ?)",
+      arguments: [itemID, item.searchText]
+    )
+  }
+
   private func itemFingerprint(_ item: ClipboardItemDraft) -> String {
-    item.contents
+    itemFingerprint(contents: item.contents.map {
+      FingerprintContent(
+        pasteboardType: $0.pasteboardType,
+        byteCount: $0.byteCount,
+        contentHash: $0.contentHash
+      )
+    })
+  }
+
+  private func itemFingerprint(contents: [FingerprintContent]) -> String {
+    for types in fingerprintPriorityTypes {
+      let matching = contents
+        .filter { types.contains($0.pasteboardType) }
+        .sorted { lhs, rhs in
+          if lhs.pasteboardType != rhs.pasteboardType {
+            return lhs.pasteboardType < rhs.pasteboardType
+          }
+          if lhs.contentHash != rhs.contentHash {
+            return lhs.contentHash < rhs.contentHash
+          }
+          return lhs.byteCount < rhs.byteCount
+        }
+      if !matching.isEmpty {
+        return matching
+          .map { "\($0.pasteboardType):\($0.byteCount):\($0.contentHash)" }
+          .joined(separator: "\n")
+      }
+    }
+
+    return contents
+      .filter { !$0.contentHash.isEmpty }
+      .sorted { lhs, rhs in
+        if lhs.pasteboardType != rhs.pasteboardType {
+          return lhs.pasteboardType < rhs.pasteboardType
+        }
+        return lhs.contentHash < rhs.contentHash
+      }
       .map { "\($0.pasteboardType):\($0.byteCount):\($0.contentHash)" }
       .joined(separator: "\n")
   }
@@ -1084,3 +1150,22 @@ public final class ClipboardDatabase: @unchecked Sendable {
     return formatter
   }()
 }
+
+private struct FingerprintContent {
+  var pasteboardType: String
+  var byteCount: Int
+  var contentHash: String
+}
+
+private let fingerprintPriorityTypes: [Set<String>] = [
+  [ClipboardContentType.plainText, ClipboardContentType.legacyPlainText],
+  [ClipboardContentType.fileURL],
+  [
+    ClipboardContentType.png,
+    ClipboardContentType.tiff,
+    ClipboardContentType.jpeg,
+    ClipboardContentType.heic
+  ],
+  [ClipboardContentType.html],
+  [ClipboardContentType.rtf]
+]
