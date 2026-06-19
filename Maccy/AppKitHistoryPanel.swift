@@ -10,6 +10,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private var searchTask: Task<Void, Never>?
   private var debounceTask: Task<Void, Never>?
   private var lastReloadQuery: String?
+  private var lastLoadedRevision = -1
   private var isPresented = false
 
   init(
@@ -54,7 +55,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     let size = AppPreferences.windowSize
     setContentSize(NSSize(width: size.width, height: size.height))
     setFrameOrigin(popupPosition.origin(size: frame.size, statusBarButton: statusBarButton))
-    reload(query: searchField.stringValue, force: true)
+    reload(query: searchField.stringValue)
     orderFrontRegardless()
     makeKey()
     makeFirstResponder(searchField)
@@ -216,7 +217,8 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private func reload(query: String, force: Bool = false) {
     searchTask?.cancel()
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard force || trimmed != lastReloadQuery else {
+    let revision = ClipboardCoreStore.shared.revision
+    guard force || trimmed != lastReloadQuery || revision != lastLoadedRevision else {
       return
     }
     lastReloadQuery = trimmed
@@ -237,6 +239,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
         if !loaded.isEmpty {
           self.tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
         }
+        self.lastLoadedRevision = revision
         self.updateFooter()
       }
     }

@@ -14,8 +14,10 @@ final class ClipboardCoreStore {
   private let root: URL
   private let trimBatchSize = 50
   private let trimLock = NSLock()
+  private let revisionLock = NSLock()
   private var didTrimAfterLaunch = false
   private var insertsSinceTrim = 0
+  private var currentRevision = 0
 
   private init() {
     let root = URL.applicationSupportDirectory.appending(path: "MaccyLite")
@@ -48,6 +50,7 @@ final class ClipboardCoreStore {
           logger.error("Failed to trim clipboard history after insert: \(error.localizedDescription)")
         }
       }
+      bumpRevision()
       return item
     } catch {
       logger.error("Failed to insert clipboard item: \(error.localizedDescription)")
@@ -85,6 +88,7 @@ final class ClipboardCoreStore {
   func setPinned(_ isPinned: Bool, itemID: String) {
     do {
       try historyStore.setPinned(isPinned, itemID: itemID)
+      bumpRevision()
     } catch {
       logger.error("Failed to set pinned=\(isPinned) for clipboard item \(itemID): \(error.localizedDescription)")
     }
@@ -93,6 +97,7 @@ final class ClipboardCoreStore {
   func delete(itemID: String) {
     do {
       try historyStore.delete(itemID: itemID)
+      bumpRevision()
     } catch {
       logger.error("Failed to delete clipboard item \(itemID): \(error.localizedDescription)")
     }
@@ -115,6 +120,18 @@ final class ClipboardCoreStore {
 
     insertsSinceTrim = 0
     return true
+  }
+
+  var revision: Int {
+    revisionLock.lock()
+    defer { revisionLock.unlock() }
+    return currentRevision
+  }
+
+  private func bumpRevision() {
+    revisionLock.lock()
+    currentRevision += 1
+    revisionLock.unlock()
   }
 
   @discardableResult
