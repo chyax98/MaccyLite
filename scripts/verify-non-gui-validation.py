@@ -48,6 +48,13 @@ def require_text(path: str, *snippets: str) -> None:
       fail(f"{path} must mention {snippet}")
 
 
+def reject_text(path: str, *snippets: str) -> None:
+  text = require_file(path)
+  for snippet in snippets:
+    if snippet in text:
+      fail(f"{path} must not mention {snippet}")
+
+
 def require_tracked(path: str, tracked_files: set[str]) -> None:
   if path not in tracked_files:
     fail(f"required tracked file is missing from git: {path}")
@@ -306,6 +313,21 @@ require_text(
   "Maccy/ClipboardCoreStore.swift",
   "private let trimBatchSize = 50",
   "private func shouldTrimAfterInsert() -> Bool",
+)
+reject_text(
+  "Maccy/AppPreferences.swift",
+  "StorageType.images",
+  "static let images",
+)
+reject_text(
+  "Maccy/Observables/AppState.swift",
+  "imageCapture",
+  "记录图片",
+)
+reject_text(
+  "Maccy/Clipboard.swift",
+  ".png",
+  ".tiff",
 )
 require_text(
   "scripts/build-local-app.sh",
