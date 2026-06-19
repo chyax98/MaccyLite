@@ -226,9 +226,21 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewTextView.isEditable = false
     previewTextView.isSelectable = true
     previewTextView.drawsBackground = false
+    previewTextView.textColor = .labelColor
     previewTextView.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
     previewTextView.textContainerInset = NSSize(width: 12, height: 12)
-    previewTextView.translatesAutoresizingMaskIntoConstraints = false
+    previewTextView.isHorizontallyResizable = false
+    previewTextView.isVerticallyResizable = true
+    previewTextView.minSize = NSSize(width: 0, height: 0)
+    previewTextView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+    previewTextView.autoresizingMask = [.width]
+    previewTextView.textContainer?.widthTracksTextView = true
+    previewTextView.textContainer?.containerSize = NSSize(
+      width: previewTextScrollView.contentSize.width,
+      height: CGFloat.greatestFiniteMagnitude
+    )
+    previewTextView.frame = NSRect(origin: .zero, size: NSSize(width: 1, height: 1))
+    previewTextView.translatesAutoresizingMaskIntoConstraints = true
 
     previewTextScrollView.documentView = previewTextView
     previewTextScrollView.hasVerticalScroller = true
@@ -500,7 +512,16 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewImageView.isHidden = true
     previewLabel.stringValue = info
     previewLabel.isHidden = false
+    contentView?.layoutSubtreeIfNeeded()
+    let textWidth = max(previewTextScrollView.contentSize.width, 240)
+    previewTextView.frame = NSRect(origin: .zero, size: NSSize(width: textWidth, height: 1))
+    previewTextView.textContainer?.containerSize = NSSize(
+      width: textWidth,
+      height: CGFloat.greatestFiniteMagnitude
+    )
     previewTextView.string = text
+    previewTextView.sizeToFit()
+    previewTextView.scrollToBeginningOfDocument(nil)
     previewTextScrollView.isHidden = false
   }
 
