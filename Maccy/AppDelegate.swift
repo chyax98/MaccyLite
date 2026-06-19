@@ -240,6 +240,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     appMenuItem.submenu = appMenu
     mainMenu.addItem(appMenuItem)
+    mainMenu.addItem(editMenuItem())
     NSApp.mainMenu = mainMenu
+  }
+
+  private func editMenuItem() -> NSMenuItem {
+    let editMenuItem = NSMenuItem()
+    let editMenu = NSMenu(title: "编辑")
+
+    editMenu.addItem(NSMenuItem(
+      title: "撤销",
+      action: Selector(("undo:")),
+      keyEquivalent: "z"
+    ))
+
+    let redoItem = NSMenuItem(
+      title: "重做",
+      action: Selector(("redo:")),
+      keyEquivalent: "Z"
+    )
+    redoItem.keyEquivalentModifierMask = [.command, .shift]
+    editMenu.addItem(redoItem)
+    editMenu.addItem(.separator())
+
+    editMenu.addItem(NSMenuItem(
+      title: "剪切",
+      action: #selector(NSText.cut(_:)),
+      keyEquivalent: "x"
+    ))
+    editMenu.addItem(NSMenuItem(
+      title: "复制",
+      action: #selector(NSText.copy(_:)),
+      keyEquivalent: "c"
+    ))
+    editMenu.addItem(NSMenuItem(
+      title: "粘贴",
+      action: #selector(NSText.paste(_:)),
+      keyEquivalent: "v"
+    ))
+    editMenu.addItem(.separator())
+    editMenu.addItem(NSMenuItem(
+      title: "全选",
+      action: #selector(NSResponder.selectAll(_:)),
+      keyEquivalent: "a"
+    ))
+
+    editMenuItem.submenu = editMenu
+    return editMenuItem
   }
 }

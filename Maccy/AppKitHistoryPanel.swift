@@ -906,6 +906,6 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
   @objc
   private func doubleClickItem() {
-    selectCurrentItem()
+    History.shared.paste(selectedItem())
   }
 }

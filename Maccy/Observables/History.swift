@@ -103,6 +103,19 @@ class History {
   }
 
   @MainActor
+  func paste(_ item: ClipboardListItem?) {
+    guard let item else {
+      return
+    }
+    guard checkAccessibilityForPaste() else {
+      return
+    }
+
+    AppState.shared.popup.close()
+    copy(item, removeFormatting: AppPreferences.removeFormattingByDefault, pasteAfter: true)
+  }
+
+  @MainActor
   private func copy(
     _ item: ClipboardListItem,
     removeFormatting: Bool = false,
