@@ -364,6 +364,7 @@ require_text(
   "scripts/validate-productization-complete.sh",
   "scripts/write-automatic-evidence.sh",
   "scripts/validate-manual-acceptance-record.py",
+  "scripts/validate-git-delivery-safety.sh",
   "productization completion validation passed",
 )
 require_executable("scripts/build-local-app.sh")

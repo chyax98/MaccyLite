@@ -10,4 +10,7 @@ scripts/write-automatic-evidence.sh
 echo "== Manual acceptance record =="
 scripts/validate-manual-acceptance-record.py
 
+echo "== Git delivery safety =="
+scripts/validate-git-delivery-safety.sh
+
 echo "productization completion validation passed"
