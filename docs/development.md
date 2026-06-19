@@ -102,6 +102,26 @@ swift test --package-path ClipboardCore
 
 `ClipboardCore/Package.resolved` 和 `Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` 都需要跟随代码提交。产品化守卫会检查 GRDB 锁定版本和已删除依赖，依赖升级应作为单独变更处理。
 
+## Git 交付
+
+当前项目来自上游 Maccy。推送 MaccyLite 改动前，先确认 `origin` 已指向自己的 MaccyLite fork，而不是 `p0deje/Maccy`：
+
+```sh
+scripts/validate-git-delivery-safety.sh
+```
+
+如果脚本提示 `origin push remote still points to upstream Maccy`，先设置自己的 fork：
+
+```sh
+git remote set-url origin <your-maccylite-fork-url>
+```
+
+确认安全后再推送：
+
+```sh
+git push origin master
+```
+
 静态验证默认测试不会启动 App：
 
 ```sh

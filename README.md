@@ -84,6 +84,12 @@ scripts/build-local-app.sh
 
 产品化剩余闭环见 `docs/productization-remaining.md`。
 
+推送前确认 `origin` 不是上游 Maccy：
+
+```sh
+scripts/validate-git-delivery-safety.sh
+```
+
 ## 维护命令
 
 ```sh

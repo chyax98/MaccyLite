@@ -169,6 +169,7 @@ require_text(
   "scripts/write-automatic-evidence.sh",
   "scripts/build-local-app.sh",
   "scripts/prepare-manual-acceptance-record.sh",
+  "scripts/validate-git-delivery-safety.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
   "docs/manual-acceptance.md",
@@ -191,6 +192,7 @@ require_text(
   "scripts/validate-performance.sh",
   "scripts/write-automatic-evidence.sh",
   "scripts/prepare-manual-acceptance-record.sh",
+  "scripts/validate-git-delivery-safety.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
   "FULL_PERFORMANCE=1",
@@ -210,6 +212,7 @@ require_text(
   "scripts/write-automatic-evidence.sh",
   "dist/validation/automatic-evidence.md",
   "scripts/prepare-manual-acceptance-record.sh",
+  "scripts/validate-git-delivery-safety.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
   "scripts/validate-productization.sh",
@@ -258,6 +261,7 @@ require_text(
   "docs/productization-remaining.md",
   "docs/manual-acceptance-record.md",
   "scripts/prepare-manual-acceptance-record.sh",
+  "scripts/validate-git-delivery-safety.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
 )
@@ -308,6 +312,14 @@ require_text(
   "dist/validation/automatic-evidence.md",
   "dist/local/MaccyLite.app",
 )
+require_text(
+  "scripts/validate-git-delivery-safety.sh",
+  "github.com/p0deje/Maccy",
+  "set origin to your MaccyLite fork before pushing",
+  "expected master for MaccyLite delivery",
+  "working tree is not clean",
+  "git delivery safety check passed",
+)
 prepare_record_script = require_file("scripts/prepare-manual-acceptance-record.sh")
 for forbidden in [
   "是否复制到 `/Applications`",
@@ -348,6 +360,7 @@ require_text(
 )
 require_executable("scripts/build-local-app.sh")
 require_executable("scripts/prepare-manual-acceptance-record.sh")
+require_executable("scripts/validate-git-delivery-safety.sh")
 require_executable("scripts/write-automatic-evidence.sh")
 require_executable("scripts/validate-manual-acceptance-record.py")
 require_executable("scripts/validate-productization-complete.sh")
