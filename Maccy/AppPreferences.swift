@@ -79,6 +79,14 @@ enum AppPreferences {
     set { set(newValue, "dailyExportEnabled") }
   }
 
+  static var dailyExportDirectoryPath: String? {
+    get {
+      let value = defaults.string(forKey: "dailyExportDirectoryPath") ?? ""
+      return value.isEmpty ? nil : value
+    }
+    set { set(newValue ?? "", "dailyExportDirectoryPath") }
+  }
+
   static var dailyExportHour: Int {
     get { integer("dailyExportHour", 0) }
     set { set(newValue, "dailyExportHour") }
@@ -128,7 +136,7 @@ enum AppPreferences {
   }
 
   static var pasteByDefault: Bool {
-    get { bool("pasteByDefault", false) }
+    get { bool("pasteByDefault", true) }
     set { set(newValue, "pasteByDefault") }
   }
 

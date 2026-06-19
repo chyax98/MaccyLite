@@ -217,6 +217,10 @@ final class ClipboardCoreStore {
   }
 
   var exportDirectory: URL {
+    if let path = AppPreferences.dailyExportDirectoryPath {
+      return URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true)
+    }
+
     return defaultExportDirectory
   }
 
@@ -292,7 +296,9 @@ final class ClipboardCoreStore {
   }
 
   private var defaultExportDirectory: URL {
-    root.appending(path: "Exports")
+    FileManager.default.homeDirectoryForCurrentUser
+      .appending(path: ".maccylite")
+      .appending(path: "Exports")
   }
 
   private func dailyExporter() -> DailyExporter {
