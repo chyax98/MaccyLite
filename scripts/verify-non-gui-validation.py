@@ -48,6 +48,45 @@ def require_text(path: str, *snippets: str) -> None:
       fail(f"{path} must mention {snippet}")
 
 
+def strings_keys(path: Path) -> set[str]:
+  text = path.read_text(errors="ignore")
+  return set(re.findall(r'^\s*"((?:\\.|[^"\\])*)"\s*=', text, re.MULTILINE))
+
+
+def require_localized_key(table_name: str, key: str, source_path: Path) -> None:
+  candidates = sorted((ROOT / "Maccy").rglob(f"zh-Hans.lproj/{table_name}.strings"))
+  if not candidates:
+    fail(f"{source_path.relative_to(ROOT)} references missing zh-Hans table {table_name}")
+  if len(candidates) > 1:
+    fail(f"multiple zh-Hans tables named {table_name}: {', '.join(str(path.relative_to(ROOT)) for path in candidates)}")
+
+  if key not in strings_keys(candidates[0]):
+    fail(f"{source_path.relative_to(ROOT)} references missing localization key {table_name}.{key}")
+
+
+def verify_static_localization_references() -> None:
+  patterns = [
+    re.compile(r'Text\(\s*"([^"]+)"\s*,\s*tableName:\s*"([^"]+)"'),
+    re.compile(r'NSLocalizedString\(\s*"([^"]+)"\s*,\s*tableName:\s*"([^"]+)"'),
+    re.compile(r'String\(localized:\s*"([^"]+)"\s*,\s*table:\s*"([^"]+)"'),
+  ]
+  localizable_patterns = [
+    re.compile(r'SearchFieldView\(\s*placeholder:\s*"([^"]+)"'),
+    re.compile(r'\b(?:title|help|message|comment|confirm|cancel):\s*"([a-z][a-z0-9_]+)"'),
+  ]
+
+  for path in (ROOT / "Maccy").rglob("*.swift"):
+    if ".build" in path.parts or not path.is_file():
+      continue
+    text = path.read_text(errors="ignore")
+    for pattern in patterns:
+      for key, table_name in pattern.findall(text):
+        require_localized_key(table_name, key, path)
+    for pattern in localizable_patterns:
+      for key in pattern.findall(text):
+        require_localized_key("Localizable", key, path)
+
+
 for tracked_path in git_tracked_files():
   if (
     tracked_path == ".build"
@@ -102,6 +141,7 @@ require_text(
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
 require_executable("scripts/validate-performance.sh")
+verify_static_localization_references()
 
 testplan = json.loads((ROOT / "Maccy.xctestplan").read_text())
 if testplan.get("testTargets") != []:
