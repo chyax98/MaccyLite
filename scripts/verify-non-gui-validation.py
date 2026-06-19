@@ -348,6 +348,8 @@ require_text(
   "app path does not exist",
   "automatic evidence exit status is not 0",
   "automatic evidence commit",
+  "result matrix is missing required scopes",
+  "result matrix contains unknown scopes",
   "scope is not accepted yet",
   "scope did not pass",
   "scope is missing evidence",

@@ -7,6 +7,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RECORD = ROOT / "docs/manual-acceptance-record.md"
+REQUIRED_SCOPES = [
+  "启动与权限",
+  "捕获短文本",
+  "捕获大文本",
+  "捕获 HTML",
+  "捕获 RTF",
+  "捕获多文件 URL",
+  "捕获图片",
+  "运行时性能采样",
+  "搜索中文短词",
+  "搜索 URL / 文件名片段",
+  "Pin / 删除 / 清空",
+  "未授权自动粘贴",
+  "已授权自动粘贴",
+  "payload 恢复失败提示",
+  "每日导出默认关闭",
+  "手动导出",
+  "定时 / 启动补导出失败提示",
+  "打开导出目录",
+  "`/Applications` 启动",
+  "长期运行观察",
+]
 
 
 def fail(message: str) -> None:
@@ -137,6 +159,13 @@ def main() -> None:
   rows = result_rows(text)
   if not rows:
     fail("result matrix has no rows")
+  scopes = [scope for scope, _, _ in rows]
+  missing_scopes = [scope for scope in REQUIRED_SCOPES if scope not in scopes]
+  if missing_scopes:
+    fail(f"result matrix is missing required scopes: {', '.join(missing_scopes)}")
+  unknown_scopes = [scope for scope in scopes if scope not in REQUIRED_SCOPES]
+  if unknown_scopes:
+    fail(f"result matrix contains unknown scopes: {', '.join(unknown_scopes)}")
 
   for scope, result, evidence in rows:
     if result == "未验收":
