@@ -73,9 +73,9 @@ public final class ClipboardDatabase: @unchecked Sendable {
       try db.execute(
         sql: """
         INSERT INTO clipboard_items
-          (id, copied_at, source_app, primary_type, display_text, search_text, is_pinned, copy_count)
+          (id, copied_at, source_app, primary_type, display_text, search_text, has_image, is_pinned, copy_count)
         VALUES
-          (?, ?, ?, ?, ?, ?, 0, 1)
+          (?, ?, ?, ?, ?, ?, ?, 0, 1)
         """,
         arguments: [
           item.id,
@@ -83,7 +83,8 @@ public final class ClipboardDatabase: @unchecked Sendable {
           item.sourceApp,
           item.primaryType,
           item.displayText,
-          item.searchText
+          item.searchText,
+          itemHasImage(item)
         ]
       )
 
@@ -605,6 +606,30 @@ public final class ClipboardDatabase: @unchecked Sendable {
       """)
     }
 
+    migrator.registerMigration("addClipboardItemHasImage") { db in
+      try db.execute(sql: """
+      ALTER TABLE clipboard_items
+      ADD COLUMN has_image INTEGER NOT NULL DEFAULT 0
+      """)
+
+      try db.execute(sql: """
+      UPDATE clipboard_items
+      SET has_image = 1
+      WHERE id IN (
+        SELECT item_id
+        FROM clipboard_contents
+        WHERE pasteboard_type IN (?, ?, ?, ?)
+           OR image_width IS NOT NULL
+           OR image_height IS NOT NULL
+      )
+      """, arguments: [
+        ClipboardContentType.png,
+        ClipboardContentType.tiff,
+        ClipboardContentType.jpeg,
+        ClipboardContentType.heic
+      ])
+    }
+
     return migrator
   }
 
@@ -636,13 +661,17 @@ public final class ClipboardDatabase: @unchecked Sendable {
     try Int.fetchOne(db, sql: sql) ?? 0
   }
 
-  private func recentLikeSearch(_ db: Database, query: String, limit: Int) throws -> [ClipboardListItem] {
+  private func recentLikeSearch(
+    _ db: Database,
+    query: String,
+    limit: Int
+  ) throws -> [ClipboardListItem] {
     try fetchListItems(
       db,
       sql: """
       SELECT \(listItemColumns(alias: "i"))
       FROM (
-        SELECT id, copied_at, source_app, primary_type, display_text, is_pinned, copy_count, search_text
+        SELECT id, copied_at, source_app, primary_type, display_text, has_image, is_pinned, copy_count, search_text
         FROM clipboard_items
         ORDER BY copied_at DESC
         LIMIT ?
@@ -661,7 +690,11 @@ public final class ClipboardDatabase: @unchecked Sendable {
     )
   }
 
-  private func fullLikeSearch(_ db: Database, query: String, limit: Int) throws -> [ClipboardListItem] {
+  private func fullLikeSearch(
+    _ db: Database,
+    query: String,
+    limit: Int
+  ) throws -> [ClipboardListItem] {
     try fetchListItems(
       db,
       sql: """
@@ -708,20 +741,23 @@ public final class ClipboardDatabase: @unchecked Sendable {
     \(prefix)source_app,
     \(prefix)primary_type,
     \(prefix)display_text,
+    \(prefix)has_image,
     \(prefix)is_pinned,
-    \(prefix)copy_count,
-    EXISTS (
-      SELECT 1
-      FROM clipboard_contents c
-      WHERE c.item_id = \(prefix)id
-        AND c.pasteboard_type IN (
-          '\(ClipboardContentType.png)',
-          '\(ClipboardContentType.tiff)',
-          '\(ClipboardContentType.jpeg)',
-          '\(ClipboardContentType.heic)'
-        )
-    ) AS has_image
+    \(prefix)copy_count
     """
+  }
+
+  private func itemHasImage(_ item: ClipboardItemDraft) -> Bool {
+    item.contents.contains { content in
+      content.imageWidth != nil ||
+        content.imageHeight != nil ||
+        [
+          ClipboardContentType.png,
+          ClipboardContentType.tiff,
+          ClipboardContentType.jpeg,
+          ClipboardContentType.heic
+        ].contains(content.pasteboardType)
+    }
   }
 
   private func ftsQuery(_ query: String, prefixTokens: Bool) -> String {

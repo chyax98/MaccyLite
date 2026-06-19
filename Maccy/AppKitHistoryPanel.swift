@@ -8,6 +8,8 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private let statusBarButton: NSStatusBarButton?
   private var items: [HistoryItemDecorator] = []
   private var searchTask: Task<Void, Never>?
+  private var debounceTask: Task<Void, Never>?
+  private var lastReloadQuery: String?
   private var isPresented = false
 
   init(
@@ -52,7 +54,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     let size = AppPreferences.windowSize
     setContentSize(NSSize(width: size.width, height: size.height))
     setFrameOrigin(popupPosition.origin(size: frame.size, statusBarButton: statusBarButton))
-    reload(query: searchField.stringValue)
+    reload(query: searchField.stringValue, force: true)
     orderFrontRegardless()
     makeKey()
     makeFirstResponder(searchField)
@@ -75,6 +77,8 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   }
 
   override func close() {
+    debounceTask?.cancel()
+    searchTask?.cancel()
     super.close()
     isPresented = false
     statusBarButton?.isHighlighted = false
@@ -112,7 +116,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   }
 
   func controlTextDidChange(_ notification: Notification) {
-    reload(query: searchField.stringValue)
+    scheduleReload(query: searchField.stringValue)
   }
 
   func numberOfRows(in tableView: NSTableView) -> Int {
@@ -150,8 +154,6 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     }()
 
     let item = items[row]
-    let pin = item.isPinned ? "pin.fill" : "doc.on.clipboard"
-    cell.imageView?.image = NSImage(systemSymbolName: pin, accessibilityDescription: nil)
     cell.textField?.stringValue = item.title.replacingOccurrences(of: "\n", with: " ").shortened(to: 300)
     return cell
   }
@@ -211,9 +213,13 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     ])
   }
 
-  private func reload(query: String) {
+  private func reload(query: String, force: Bool = false) {
     searchTask?.cancel()
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard force || trimmed != lastReloadQuery else {
+      return
+    }
+    lastReloadQuery = trimmed
 
     searchTask = Task {
       let loaded = await Task.detached(priority: .userInitiated) {
@@ -236,6 +242,18 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     }
   }
 
+  private func scheduleReload(query: String) {
+    debounceTask?.cancel()
+    let pendingQuery = query
+    debounceTask = Task {
+      try? await Task.sleep(nanoseconds: 120_000_000)
+      guard !Task.isCancelled else { return }
+      await MainActor.run {
+        self.reload(query: pendingQuery)
+      }
+    }
+  }
+
   private func selectedItem() -> HistoryItemDecorator? {
     guard items.indices.contains(tableView.selectedRow) else {
       return items.first
@@ -251,13 +269,13 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   private func deleteCurrentItem() {
     guard let item = selectedItem() else { return }
     History.shared.delete(item)
-    reload(query: searchField.stringValue)
+    reload(query: searchField.stringValue, force: true)
   }
 
   private func togglePinCurrentItem() {
     guard let item = selectedItem() else { return }
     History.shared.togglePin(item)
-    reload(query: searchField.stringValue)
+    reload(query: searchField.stringValue, force: true)
   }
 
   private func moveSelection(by delta: Int) {
