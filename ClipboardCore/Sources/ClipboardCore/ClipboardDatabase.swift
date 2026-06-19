@@ -347,45 +347,38 @@ public final class ClipboardDatabase: @unchecked Sendable {
     }
 
     try writer.write { db in
+      try db.execute(sql: "DROP TABLE IF EXISTS temp.trim_candidates")
+      try db.execute(sql: "CREATE TEMP TABLE trim_candidates(id TEXT PRIMARY KEY) WITHOUT ROWID")
       try db.execute(
         sql: """
-        DELETE FROM clipboard_search
-        WHERE item_id IN (
+        INSERT INTO trim_candidates(id)
           SELECT id
           FROM clipboard_items
           WHERE is_pinned = 0
           ORDER BY copied_at DESC
           LIMIT -1 OFFSET ?
-        )
         """,
         arguments: [maxCount]
+      )
+      try db.execute(
+        sql: """
+        DELETE FROM clipboard_search
+        WHERE item_id IN (SELECT id FROM trim_candidates)
+        """
       )
       try db.execute(
         sql: """
         DELETE FROM clipboard_trigram
-        WHERE item_id IN (
-          SELECT id
-          FROM clipboard_items
-          WHERE is_pinned = 0
-          ORDER BY copied_at DESC
-          LIMIT -1 OFFSET ?
-        )
-        """,
-        arguments: [maxCount]
+        WHERE item_id IN (SELECT id FROM trim_candidates)
+        """
       )
       try db.execute(
         sql: """
         DELETE FROM clipboard_items
-        WHERE id IN (
-          SELECT id
-          FROM clipboard_items
-          WHERE is_pinned = 0
-          ORDER BY copied_at DESC
-          LIMIT -1 OFFSET ?
-        )
-        """,
-        arguments: [maxCount]
+        WHERE id IN (SELECT id FROM trim_candidates)
+        """
       )
+      try db.execute(sql: "DROP TABLE IF EXISTS temp.trim_candidates")
     }
   }
 
