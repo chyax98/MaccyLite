@@ -25,7 +25,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © Alexey Rodionov</string>
+	<string>MaccyLite contributors. Based on Maccy by Alexey Rodionov.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

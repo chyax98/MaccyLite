@@ -147,6 +147,26 @@ require_text(
   "复制失败",
   "每日导出失败",
 )
+require_text(
+  "Maccy/Info.plist",
+  "<key>CFBundleDevelopmentRegion</key>",
+  "<string>zh-Hans</string>",
+  "<key>CFBundleIdentifier</key>",
+  "<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>",
+  "<key>CFBundleName</key>",
+  "<string>$(PRODUCT_NAME)</string>",
+  "MaccyLite contributors. Based on Maccy by Alexey Rodionov.",
+)
+require_text(
+  "Maccy/Maccy.entitlements",
+  "$(PRODUCT_BUNDLE_IDENTIFIER)-spks",
+  "$(PRODUCT_BUNDLE_IDENTIFIER)-spki",
+)
+require_text(
+  "Maccy/zh-Hans.lproj/Localizable.strings",
+  "“MaccyLite”想要使用“辅助功能”控制此计算机。",
+  "选择“MaccyLite”",
+)
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
 require_executable("scripts/validate-maintenance.sh")
@@ -170,6 +190,10 @@ if sorted(set(buildable_names)) != ["Maccy"]:
   fail(f"Maccy.xcscheme must only reference the Maccy app target: {buildable_names}")
 
 pbxproj = (ROOT / "Maccy.xcodeproj/project.pbxproj").read_text()
+if pbxproj.count("PRODUCT_BUNDLE_IDENTIFIER = com.local.MaccyLite;") != 2:
+  fail("Xcode project must set PRODUCT_BUNDLE_IDENTIFIER to com.local.MaccyLite for Debug and Release")
+if pbxproj.count("PRODUCT_NAME = MaccyLite;") != 2:
+  fail("Xcode project must set PRODUCT_NAME to MaccyLite for Debug and Release")
 for forbidden in [
   "MaccyUITests",
   "com.apple.product-type.bundle.ui-testing",
@@ -184,6 +208,8 @@ for forbidden in [
   "Vision.framework",
   "Sparkle",
   "AppIntents",
+  "com.p0deje",
+  "org.p0deje",
 ]:
   if forbidden in pbxproj:
     fail(f"Xcode project still contains {forbidden}")
@@ -259,6 +285,9 @@ for source_root in ["Maccy", "ClipboardCore"]:
     for marker in ["TODO", "FIXME"]:
       if marker in text:
         fail(f"{path.relative_to(ROOT)} still contains {marker}")
+    for forbidden_identity in ["com.p0deje", "org.p0deje"]:
+      if forbidden_identity in text:
+        fail(f"{path.relative_to(ROOT)} still contains upstream bundle identity {forbidden_identity}")
 
 for path in (ROOT / "ClipboardCore/Tests").rglob("*.swift"):
   text = path.read_text(errors="ignore")
