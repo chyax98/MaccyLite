@@ -68,6 +68,8 @@ require_text(
 )
 require_text(
   "docs/manual-acceptance.md",
+  "## 验收记录",
+  "- [ ]",
   "Accessibility",
   "Clipboard capture sample",
   "复制失败",
