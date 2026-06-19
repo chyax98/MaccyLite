@@ -59,6 +59,8 @@ xcodebuild \
 
 真实快捷键、面板焦点、Accessibility 自动粘贴只做人工验收，清单见 `docs/manual-acceptance.md`。
 
+产品化剩余闭环见 `docs/productization-remaining.md`。
+
 ## 维护命令
 
 ```sh
