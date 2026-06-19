@@ -16,17 +16,23 @@
 
 ## Required Commands
 
-发布前至少跑：
+发布前至少跑一键闸门：
+
+```sh
+scripts/validate-productization.sh
+```
+
+它会依次运行：
 
 ```sh
 scripts/validate-non-gui.sh
 scripts/validate-performance.sh
 ```
 
-完整压测再跑：
+完整压测使用同一个入口：
 
 ```sh
-TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
+FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
 ## Completion Rule

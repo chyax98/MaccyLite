@@ -33,6 +33,14 @@ def require_file(path: str) -> str:
   return file_path.read_text(errors="ignore")
 
 
+def require_executable(path: str) -> None:
+  file_path = ROOT / path
+  if not file_path.is_file():
+    fail(f"required executable is missing: {path}")
+  if not file_path.stat().st_mode & 0o111:
+    fail(f"required executable is not executable: {path}")
+
+
 def require_text(path: str, *snippets: str) -> None:
   text = require_file(path)
   for snippet in snippets:
@@ -62,8 +70,10 @@ require_text(
 require_text(
   "docs/productization-acceptance-matrix.md",
   "docs/manual-acceptance.md",
+  "scripts/validate-productization.sh",
   "scripts/validate-non-gui.sh",
   "scripts/validate-performance.sh",
+  "FULL_PERFORMANCE=1",
   "不迁移旧历史和设置",
 )
 require_text(
@@ -75,6 +85,9 @@ require_text(
   "复制失败",
   "每日导出失败",
 )
+require_executable("scripts/validate-productization.sh")
+require_executable("scripts/validate-non-gui.sh")
+require_executable("scripts/validate-performance.sh")
 
 testplan = json.loads((ROOT / "Maccy.xctestplan").read_text())
 if testplan.get("testTargets") != []:
