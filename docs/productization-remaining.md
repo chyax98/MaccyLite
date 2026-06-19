@@ -40,7 +40,7 @@
 
 ## 还需要人工验收
 
-见 `docs/manual-acceptance.md`，结果记录到 `docs/manual-acceptance-record.md`。重点是这些自动测试无法可靠证明的 macOS 行为：
+见 `docs/manual-acceptance.md`，记录模板见 `docs/manual-acceptance-record.md`，实际结果写到 `dist/validation/manual-acceptance-record.md`。重点是这些自动测试无法可靠证明的 macOS 行为：
 
 - 菜单栏启动、快捷键唤起、面板焦点恢复。
 - Accessibility 未授权/已授权下的自动粘贴。
@@ -58,7 +58,7 @@
 ## 当前下一步
 
 1. 运行 `scripts/prepare-manual-acceptance-record.sh` 填充记录元数据。
-2. 按 `docs/manual-acceptance.md` 做人工验收，并填写 `docs/manual-acceptance-record.md`。
+2. 按 `docs/manual-acceptance.md` 做人工验收，并填写 `dist/validation/manual-acceptance-record.md`。
 3. 运行 `scripts/validate-manual-acceptance-record.py`，确认人工记录没有漏项。
 4. 运行 `scripts/validate-productization-complete.sh`，确认自动证据和人工证据同时成立。
 5. 运行 `scripts/validate-git-delivery-safety.sh`，确认不会误推到上游 Maccy。

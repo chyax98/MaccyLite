@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RECORD="${ROOT}/docs/manual-acceptance-record.md"
+TEMPLATE="${ROOT}/docs/manual-acceptance-record.md"
+RECORD="${ROOT}/dist/validation/manual-acceptance-record.md"
 
 cd "${ROOT}"
 
@@ -11,15 +12,18 @@ macos="$(sw_vers -productVersion)"
 machine="$(uname -m)"
 commit="$(git rev-parse --short HEAD)"
 
-python3 - "$RECORD" "$today" "$macos" "$machine" "$commit" <<'PY'
+mkdir -p "$(dirname "${RECORD}")"
+
+python3 - "$TEMPLATE" "$RECORD" "$today" "$macos" "$machine" "$commit" <<'PY'
 import sys
 from pathlib import Path
 
-record_path = Path(sys.argv[1])
-today = sys.argv[2]
-macos = sys.argv[3]
-machine = sys.argv[4]
-commit = sys.argv[5]
+template_path = Path(sys.argv[1])
+record_path = Path(sys.argv[2])
+today = sys.argv[3]
+macos = sys.argv[4]
+machine = sys.argv[5]
+commit = sys.argv[6]
 
 replacements = {
   "- 日期：": f"- 日期：{today}",
@@ -31,7 +35,8 @@ replacements = {
   "- App 路径：": "- App 路径：`dist/local/MaccyLite.app`",
 }
 
-lines = record_path.read_text().splitlines()
+source_path = record_path if record_path.exists() else template_path
+lines = source_path.read_text().splitlines()
 updated = []
 for line in lines:
   updated.append(next((value for prefix, value in replacements.items() if line.startswith(prefix)), line))

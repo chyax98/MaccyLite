@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RECORD = ROOT / "docs/manual-acceptance-record.md"
+DEFAULT_RECORD = ROOT / "dist/validation/manual-acceptance-record.md"
 REQUIRED_SCOPES = [
   "启动与权限",
   "捕获短文本",

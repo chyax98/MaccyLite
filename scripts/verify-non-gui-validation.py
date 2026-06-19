@@ -174,6 +174,7 @@ require_text(
   "scripts/validate-productization-complete.sh",
   "docs/manual-acceptance.md",
   "docs/manual-acceptance-record.md",
+  "dist/validation/manual-acceptance-record.md",
 )
 require_text(
   "docs/release-notes.md",
@@ -192,6 +193,7 @@ require_text(
   "scripts/validate-performance.sh",
   "scripts/write-automatic-evidence.sh",
   "scripts/prepare-manual-acceptance-record.sh",
+  "dist/validation/manual-acceptance-record.md",
   "scripts/validate-git-delivery-safety.sh",
   "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization-complete.sh",
@@ -225,6 +227,7 @@ require_text(
   "## Build",
   "scripts/prepare-manual-acceptance-record.sh",
   "scripts/validate-manual-acceptance-record.py",
+  "dist/validation/manual-acceptance-record.md",
   "当前仓库 HEAD",
   "退出码为 0",
   "真实存在的 `.app`",
@@ -256,6 +259,7 @@ require_text(
 require_text(
   "docs/productization-acceptance-matrix.md",
   "docs/manual-acceptance-record.md",
+  "dist/validation/manual-acceptance-record.md",
 )
 require_text(
   "docs/productization-remaining.md",
@@ -307,6 +311,7 @@ require_text(
 require_text(
   "scripts/prepare-manual-acceptance-record.sh",
   "docs/manual-acceptance-record.md",
+  "dist/validation/manual-acceptance-record.md",
   "sw_vers -productVersion",
   "git rev-parse --short HEAD",
   "dist/validation/automatic-evidence.md",
@@ -341,6 +346,7 @@ require_text(
 )
 require_text(
   "scripts/validate-manual-acceptance-record.py",
+  "dist/validation/manual-acceptance-record.md",
   "manual acceptance record validation failed",
   "summary conclusion must be 通过",
   "record git commit",

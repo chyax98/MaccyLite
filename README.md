@@ -56,7 +56,7 @@ scripts/write-automatic-evidence.sh
 FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ```
 
-真实快捷键、面板焦点、Accessibility 自动粘贴只做人工验收，清单见 `docs/manual-acceptance.md`，结果记录在 `docs/manual-acceptance-record.md`。
+真实快捷键、面板焦点、Accessibility 自动粘贴只做人工验收，清单见 `docs/manual-acceptance.md`，记录模板见 `docs/manual-acceptance-record.md`，实际结果写到 `dist/validation/manual-acceptance-record.md`。
 
 人工验收前填充记录元数据：
 

@@ -69,7 +69,7 @@ FULL_PERFORMANCE=1 scripts/validate-productization.sh
 ## Completion Rule
 
 - 自动证据必须全部通过。
-- `docs/manual-acceptance.md` 的人工项必须完成，并同步记录到 `docs/manual-acceptance-record.md`。
+- `docs/manual-acceptance.md` 的人工项必须完成；`docs/manual-acceptance-record.md` 是模板，实际结果必须记录到 `dist/validation/manual-acceptance-record.md`。
 - `scripts/validate-manual-acceptance-record.py` 必须通过。
 - `scripts/validate-productization-complete.sh` 必须通过。
 - 推送前 `scripts/validate-git-delivery-safety.sh` 必须通过。

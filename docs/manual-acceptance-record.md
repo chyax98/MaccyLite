@@ -1,12 +1,14 @@
 # Manual Acceptance Record
 
-这份文件用于记录真实 macOS session 的人工验收结果。产品化关闭前，把 `docs/manual-acceptance.md` 的检查结果同步到这里。
+这份文件是人工验收记录模板。产品化关闭前，把 `docs/manual-acceptance.md` 的检查结果同步到 `dist/validation/manual-acceptance-record.md`。
 
 开始人工验收前可先运行：
 
 ```sh
 scripts/prepare-manual-acceptance-record.sh
 ```
+
+脚本会从这个模板生成 `dist/validation/manual-acceptance-record.md`，并填充日期、macOS、机器、commit、App 路径和自动证据路径。
 
 填写完成后运行：
 
