@@ -2,5 +2,11 @@
 DerivedData/
 .build/
 ClipboardCore/.build/
+ClipboardCore/.swiftpm/
+.swiftpm/
 *.xcuserstate
 *.xcuserdata/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.app

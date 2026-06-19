@@ -128,6 +128,10 @@ for tracked_path in tracked_files:
     or tracked_path.startswith(".build/")
     or tracked_path == "ClipboardCore/.build"
     or tracked_path.startswith("ClipboardCore/.build/")
+    or tracked_path == ".swiftpm"
+    or tracked_path.startswith(".swiftpm/")
+    or tracked_path == "ClipboardCore/.swiftpm"
+    or tracked_path.startswith("ClipboardCore/.swiftpm/")
     or tracked_path == "DerivedData"
     or tracked_path.startswith("DerivedData/")
     or tracked_path.endswith(".xcuserstate")
@@ -137,6 +141,19 @@ for tracked_path in tracked_files:
 
 require_tracked("ClipboardCore/Package.resolved", tracked_files)
 require_tracked("Maccy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved", tracked_files)
+
+require_text(
+  ".gitignore",
+  "DerivedData/",
+  ".build/",
+  "ClipboardCore/.build/",
+  "ClipboardCore/.swiftpm/",
+  "*.xcuserstate",
+  "*.xcuserdata/",
+  "*.sqlite",
+  "*.sqlite-wal",
+  "*.app",
+)
 
 require_text(
   "README.md",
