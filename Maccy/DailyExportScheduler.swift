@@ -42,6 +42,13 @@ final class DailyExportScheduler {
   }
 
   func stop() {
+    guard Thread.isMainThread else {
+      DispatchQueue.main.async { [weak self] in
+        self?.stop()
+      }
+      return
+    }
+
     timer?.invalidate()
     timer = nil
   }
@@ -92,6 +99,13 @@ final class DailyExportScheduler {
   }
 
   private func reschedule() {
+    guard Thread.isMainThread else {
+      DispatchQueue.main.async { [weak self] in
+        self?.reschedule()
+      }
+      return
+    }
+
     stop()
 
     guard Defaults[.dailyExportEnabled] else {
@@ -112,6 +126,8 @@ final class DailyExportScheduler {
   }
 
   private func scheduleNextExport() {
+    assert(Thread.isMainThread)
+
     guard let fireDate = schedulePolicy().nextFireDate(after: Date.now) else {
       return
     }

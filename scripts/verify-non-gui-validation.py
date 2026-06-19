@@ -226,6 +226,12 @@ require_text(
   "“MaccyLite”想要使用“辅助功能”控制此计算机。",
   "选择“MaccyLite”",
 )
+require_text(
+  "Maccy/DailyExportScheduler.swift",
+  "guard Thread.isMainThread else",
+  "assert(Thread.isMainThread)",
+  "RunLoop.main.add(timer, forMode: .common)",
+)
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
 require_executable("scripts/validate-maintenance.sh")
