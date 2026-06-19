@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
+import re
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,19 +44,59 @@ testplan = json.loads((ROOT / "Maccy.xctestplan").read_text())
 if testplan.get("testTargets") != []:
   fail("Maccy.xctestplan must not contain test targets")
 
+scheme = ET.parse(ROOT / "Maccy.xcodeproj/xcshareddata/xcschemes/Maccy.xcscheme")
+if scheme.findall(".//TestableReference"):
+  fail("Maccy.xcscheme must not contain TestableReference entries")
+
+buildable_names = [
+  element.get("BlueprintName")
+  for element in scheme.findall(".//BuildableReference")
+  if element.get("BlueprintName")
+]
+if sorted(set(buildable_names)) != ["Maccy"]:
+  fail(f"Maccy.xcscheme must only reference the Maccy app target: {buildable_names}")
+
 pbxproj = (ROOT / "Maccy.xcodeproj/project.pbxproj").read_text()
 for forbidden in [
   "MaccyUITests",
   "com.apple.product-type.bundle.ui-testing",
+  "com.apple.product-type.bundle.unit-test",
   "TEST_TARGET_NAME",
   "History.xcdatamodeld",
   "Storage.xcdatamodeld",
   "SoftwareUpdater.swift",
   "AppStoreReview.swift",
   "Notifier.swift",
+  "SwiftData",
+  "Vision.framework",
+  "Sparkle",
+  "AppIntents",
 ]:
   if forbidden in pbxproj:
     fail(f"Xcode project still contains {forbidden}")
+
+native_target_count = len(re.findall(r"isa = PBXNativeTarget;", pbxproj))
+if native_target_count != 1:
+  fail(f"Xcode project must contain exactly one native target, found {native_target_count}")
+
+product_types = re.findall(r'productType = "([^"]+)";', pbxproj)
+if product_types != ["com.apple.product-type.application"]:
+  fail(f"Xcode project must only build the app target, found product types: {product_types}")
+
+package_manifest = (ROOT / "ClipboardCore/Package.swift").read_text()
+if "GRDB.swift.git" not in package_manifest:
+  fail("ClipboardCore package must keep GRDB as the explicit SQLite dependency")
+
+for forbidden in [
+  "Sparkle",
+  "SwiftData",
+  "Vision",
+  "AppIntents",
+  "KeyboardShortcuts",
+  "Defaults",
+]:
+  if forbidden in package_manifest:
+    fail(f"ClipboardCore package manifest should not depend on app/UI package {forbidden}")
 
 for forbidden_path in [
   ".github",
@@ -92,6 +134,15 @@ for source_root in ["Maccy", "ClipboardCore"]:
     for forbidden in ["XCUIApplication", "enable-testing"]:
       if forbidden in text:
         fail(f"{path.relative_to(ROOT)} still contains {forbidden}")
+    for forbidden_import in [
+      "SwiftData",
+      "Vision",
+      "Sparkle",
+      "AppIntents",
+      "UserNotifications",
+    ]:
+      if re.search(rf"^\s*import\s+{re.escape(forbidden_import)}\b", text, re.MULTILINE):
+        fail(f"{path.relative_to(ROOT)} imports removed framework {forbidden_import}")
 
 for path in (ROOT / "ClipboardCore/Tests").rglob("*.swift"):
   text = path.read_text(errors="ignore")

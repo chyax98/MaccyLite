@@ -707,6 +707,89 @@ func clipboardHistoryStoreCoversLoadSearchSelectDeleteAndPinBoundary() throws {
 }
 
 @Test
+func clipboardHistoryStoreLargeObjectSearchExportAndPayloadRoundTrip() throws {
+  let directory = try temporaryDirectory()
+  let assetStore = AssetStore(root: directory.appending(path: "Assets"))
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+  let policy = StoragePolicy(
+    textInlineLimit: 32,
+    richTextInlineLimit: 32,
+    genericInlineLimit: 32,
+    previewLimit: 18,
+    displayCharacterLimit: 24,
+    searchTextLimit: 2_000
+  )
+  let store = ClipboardHistoryStore(
+    database: database,
+    capture: ClipboardCapture(policy: policy, assetStore: assetStore)
+  )
+  let copiedAt = Date(timeIntervalSince1970: 1_719_360_000) // 2024-06-25 00:00:00 UTC
+  let longText = String(repeating: "大对象复制性能测试 ", count: 30) + "terminal-token"
+  let textData = Data(longText.utf8)
+  let fileURL = "file:///Users/xd/Desktop/daily-signal/report.md"
+  let imageData = try onePixelPNG()
+  let orphan = try assetStore.write(Data("可清理孤儿资产".utf8), type: ClipboardContentType.plainText, copiedAt: copiedAt)
+
+  let inserted = try #require(try store.insert(
+    contents: [
+      ClipboardRawContent(pasteboardType: ClipboardContentType.plainText, data: textData),
+      ClipboardRawContent(pasteboardType: ClipboardContentType.fileURL, data: Data(fileURL.utf8)),
+      ClipboardRawContent(pasteboardType: ClipboardContentType.png, data: imageData)
+    ],
+    sourceApp: "tests.large-object",
+    copiedAt: copiedAt
+  ))
+
+  let listItem = try #require(try store.latestList().first)
+  #expect(listItem.id == inserted.id)
+  #expect(listItem.hasImage)
+  #expect(listItem.displayText.count <= policy.displayCharacterLimit)
+
+  #expect(try store.search("terminal-token").map(\.id) == [inserted.id])
+  #expect(try store.search("daily signal report md").map(\.id) == [inserted.id])
+
+  let stored = try #require(try store.selectedItem(id: inserted.id))
+  let textContent = try #require(stored.contents.first { $0.pasteboardType == ClipboardContentType.plainText })
+  let imageContent = try #require(stored.contents.first { $0.pasteboardType == ClipboardContentType.png })
+  #expect(textContent.assetPath != nil)
+  #expect(textContent.inlineData?.count ?? 0 <= policy.previewLimit)
+  #expect(try assetStore.read(textContent.assetPath!) == textData)
+  #expect(imageContent.assetPath != nil)
+  #expect(imageContent.imageWidth == 1)
+  #expect(imageContent.imageHeight == 1)
+
+  let resolver = ClipboardPasteboardPayloadResolver { path in
+    try assetStore.read(path)
+  }
+  let payloads = try resolver.payloads(for: stored)
+  #expect(payloads.contains(ClipboardPasteboardPayload(pasteboardType: ClipboardContentType.plainText, data: textData)))
+  #expect(payloads.contains(ClipboardPasteboardPayload(pasteboardType: ClipboardContentType.fileURL, data: Data(fileURL.utf8))))
+  #expect(payloads.contains(ClipboardPasteboardPayload(pasteboardType: ClipboardContentType.png, data: imageData)))
+
+  let exporter = DailyExporter(
+    database: database,
+    assetStore: assetStore,
+    exportDirectory: directory.appending(path: "Exports"),
+    calendar: Calendar(identifier: .gregorian),
+    orphanCleanupMinimumAge: 0
+  )
+  let result = try exporter.export(day: copiedAt)
+  let markdown = try String(contentsOf: result.url, encoding: .utf8)
+
+  #expect(result.itemCount == 1)
+  #expect(markdown.contains(longText))
+  #expect(markdown.contains(fileURL))
+  #expect(markdown.contains("- 图片尺寸：1x1"))
+  #expect(markdown.contains(textContent.assetPath!))
+  #expect(markdown.contains(imageContent.assetPath!))
+
+  #expect(try exporter.removeOrphanAssets() == [orphan.relativePath])
+  #expect(assetStore.exists(textContent.assetPath!))
+  #expect(assetStore.exists(imageContent.assetPath!))
+  #expect(!assetStore.exists(orphan.relativePath))
+}
+
+@Test
 func clipboardHistoryStoreTrimsOnlyUnpinnedItems() throws {
   let directory = try temporaryDirectory()
   let assetStore = AssetStore(root: directory.appending(path: "Assets"))

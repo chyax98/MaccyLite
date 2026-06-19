@@ -61,14 +61,14 @@ public struct ClipboardPasteboardPayloadResolver: Sendable {
   }
 
   private func data(for content: ClipboardStoredContent) throws -> Data {
-    if let inlineData = content.inlineData {
-      return inlineData
+    if let assetPath = content.assetPath {
+      return try readAsset(assetPath)
     }
 
-    guard let assetPath = content.assetPath else {
+    guard let inlineData = content.inlineData else {
       throw ClipboardPasteboardPayloadError.missingAsset(content.pasteboardType)
     }
 
-    return try readAsset(assetPath)
+    return inlineData
   }
 }
