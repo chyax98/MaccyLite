@@ -317,6 +317,7 @@ reject_package_pins(
 )
 
 for forbidden_path in [
+  ".bartycrouch.toml",
   ".github",
   "Designs",
   "MaccyTests",
