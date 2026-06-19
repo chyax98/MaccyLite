@@ -155,6 +155,10 @@ require_text(
   "*.app",
 )
 
+swiftlint_config = require_file(".swiftlint.yml")
+if re.search(r"^\s*-\s*todo\s*$", swiftlint_config, re.MULTILINE):
+  fail(".swiftlint.yml must not disable the todo rule")
+
 require_text(
   "README.md",
   "scripts/validate-productization.sh",
