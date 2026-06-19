@@ -215,8 +215,7 @@ public final class DailyExporter: @unchecked Sendable {
       return nil
     }
 
-    return String(data: data, encoding: .utf8)?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return String(data: data, encoding: .utf8)
   }
 
   private static func dayKey(_ date: Date) -> String {

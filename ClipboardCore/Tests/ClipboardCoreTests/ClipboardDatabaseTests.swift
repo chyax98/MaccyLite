@@ -233,7 +233,7 @@ func dailyExporterWritesMarkdownAndRemovesOrphanAssets() throws {
   let assetStore = AssetStore(root: directory.appending(path: "Assets"))
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
   let copiedAt = Date(timeIntervalSince1970: 1_719_187_200) // 2024-06-23 00:00:00 UTC
-  let fullText = "长期保存的大文本内容，应该完整进入每日 Markdown 导出，不能只留下资产路径。\n```swift\nlet value = 1\n```"
+  let fullText = "  长期保存的大文本内容，应该完整进入每日 Markdown 导出，不能只留下资产路径。\n```swift\nlet value = 1\n```\n\n"
   let data = Data(fullText.utf8)
   let asset = try assetStore.write(data, type: ClipboardContentType.plainText, copiedAt: copiedAt)
   let thumbnail = try assetStore.write(try onePixelPNG(), type: ClipboardContentType.png, copiedAt: copiedAt)
