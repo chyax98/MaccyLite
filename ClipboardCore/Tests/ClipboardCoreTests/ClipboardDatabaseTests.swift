@@ -664,6 +664,38 @@ func dailyExportSchedulePolicyClampsConfigAndCatchUpDays() throws {
 }
 
 @Test
+func dailyExportSchedulePolicyDetectsCurrentAndStaleExports() throws {
+  let calendar = utcCalendar()
+  let policy = DailyExportSchedulePolicy(hour: 0, minute: 5, catchUpDays: 3, calendar: calendar)
+  let record = DailyExportRecord(
+    day: "2026-06-18",
+    path: "/tmp/2026-06-18.md",
+    itemCount: 12,
+    exportedAt: try date("2026-06-19T00:05:00Z", calendar: calendar)
+  )
+
+  #expect(policy.exportIsCurrent(record: record, fileExists: true, currentItemCount: 12))
+  #expect(!policy.exportIsCurrent(record: nil, fileExists: true, currentItemCount: 12))
+  #expect(!policy.exportIsCurrent(record: record, fileExists: false, currentItemCount: 12))
+  #expect(!policy.exportIsCurrent(record: record, fileExists: true, currentItemCount: nil))
+  #expect(!policy.exportIsCurrent(record: record, fileExists: true, currentItemCount: 13))
+}
+
+@Test
+func dailyExportSchedulePolicyFiltersCatchUpDaysToMissingExports() throws {
+  let calendar = utcCalendar()
+  let policy = DailyExportSchedulePolicy(hour: 0, minute: 5, catchUpDays: 3, calendar: calendar)
+  let now = try date("2026-06-19T12:00:00Z", calendar: calendar)
+  let currentDay = try date("2026-06-18T12:00:00Z", calendar: calendar)
+
+  let missing = policy.missingExportDays(before: now) { day in
+    calendar.isDate(day, inSameDayAs: currentDay)
+  }
+
+  #expect(missing.map { calendar.component(.day, from: $0) } == [17, 16])
+}
+
+@Test
 func clipboardHistoryStoreCoversLoadSearchSelectDeleteAndPinBoundary() throws {
   let directory = try temporaryDirectory()
   let assetStore = AssetStore(root: directory.appending(path: "Assets"))

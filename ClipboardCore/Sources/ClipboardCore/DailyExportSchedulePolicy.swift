@@ -44,4 +44,25 @@ public struct DailyExportSchedulePolicy: Sendable, Equatable {
       calendar.date(byAdding: .day, value: -offset, to: now)
     }
   }
+
+  public func exportIsCurrent(
+    record: DailyExportRecord?,
+    fileExists: Bool,
+    currentItemCount: Int?
+  ) -> Bool {
+    guard let record, fileExists, let currentItemCount else {
+      return false
+    }
+
+    return record.itemCount == currentItemCount
+  }
+
+  public func missingExportDays(
+    before now: Date,
+    isExportCurrent: (Date) -> Bool
+  ) -> [Date] {
+    catchUpExportDays(before: now).filter { day in
+      !isExportCurrent(day)
+    }
+  }
 }

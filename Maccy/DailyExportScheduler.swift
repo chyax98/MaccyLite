@@ -85,10 +85,7 @@ final class DailyExportScheduler {
   }
 
   private func catchUpMissingExports() {
-    for day in schedulePolicy().catchUpExportDays(before: Date.now) {
-      if exportAlreadyCurrent(day: day) {
-        continue
-      }
+    for day in schedulePolicy().missingExportDays(before: Date.now, isExportCurrent: exportAlreadyCurrent) {
       _ = export(day: day)
     }
   }
@@ -138,13 +135,14 @@ final class DailyExportScheduler {
   }
 
   private func exportAlreadyCurrent(day: Date) -> Bool {
-    guard let record = ClipboardCoreStore.shared.exportRecord(day: day),
-          FileManager.default.fileExists(atPath: record.path),
-          let currentCount = ClipboardCoreStore.shared.exportItemCount(day: day, calendar: calendar) else {
-      return false
-    }
-
-    return record.itemCount == currentCount
+    let record = ClipboardCoreStore.shared.exportRecord(day: day)
+    let fileExists = record.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
+    let currentCount = ClipboardCoreStore.shared.exportItemCount(day: day, calendar: calendar)
+    return schedulePolicy().exportIsCurrent(
+      record: record,
+      fileExists: fileExists,
+      currentItemCount: currentCount
+    )
   }
 
   private func schedulePolicy() -> DailyExportSchedulePolicy {
