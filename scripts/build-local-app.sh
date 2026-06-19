@@ -41,6 +41,11 @@ if [[ -z "${LOCAL_SIGNING_IDENTITY}" ]]; then
   )"
 fi
 
+if [[ -z "${LOCAL_SIGNING_IDENTITY}" ]] &&
+  security find-certificate -c "MaccyLite Local Code Signing" >/dev/null 2>&1; then
+  LOCAL_SIGNING_IDENTITY="MaccyLite Local Code Signing"
+fi
+
 if [[ -n "${LOCAL_SIGNING_IDENTITY}" ]]; then
   echo "Signing with identity: ${LOCAL_SIGNING_IDENTITY}" >&2
   codesign --force --deep --sign "${LOCAL_SIGNING_IDENTITY}" "${OUTPUT_APP}"
