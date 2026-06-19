@@ -58,6 +58,12 @@ FULL_PERFORMANCE=1 scripts/validate-productization.sh
 
 真实快捷键、面板焦点、Accessibility 自动粘贴只做人工验收，清单见 `docs/manual-acceptance.md`，结果记录在 `docs/manual-acceptance-record.md`。
 
+人工记录填完后检查：
+
+```sh
+scripts/validate-manual-acceptance-record.py
+```
+
 准备本地人工验收 App：
 
 ```sh

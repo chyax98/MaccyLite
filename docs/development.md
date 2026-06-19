@@ -183,4 +183,10 @@ xcodebuild \
 
 真实快捷键、面板焦点、Accessibility 自动粘贴、TCC 授权提示都属于人工验收，清单见 [manual-acceptance.md](manual-acceptance.md)，结果记录到 [manual-acceptance-record.md](manual-acceptance-record.md)。
 
+人工记录填完后运行：
+
+```sh
+scripts/validate-manual-acceptance-record.py
+```
+
 产品化是否可以关闭，按 [productization-acceptance-matrix.md](productization-acceptance-matrix.md) 判定。

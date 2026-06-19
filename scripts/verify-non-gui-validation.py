@@ -168,6 +168,7 @@ require_text(
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/write-automatic-evidence.sh",
   "scripts/build-local-app.sh",
+  "scripts/validate-manual-acceptance-record.py",
   "docs/manual-acceptance.md",
   "docs/manual-acceptance-record.md",
 )
@@ -187,6 +188,7 @@ require_text(
   "scripts/validate-maintenance.sh",
   "scripts/validate-performance.sh",
   "scripts/write-automatic-evidence.sh",
+  "scripts/validate-manual-acceptance-record.py",
   "FULL_PERFORMANCE=1",
   "不迁移旧历史和设置",
 )
@@ -203,6 +205,7 @@ require_text(
   "dist/local/MaccyLite.app",
   "scripts/write-automatic-evidence.sh",
   "dist/validation/automatic-evidence.md",
+  "scripts/validate-manual-acceptance-record.py",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/validate-non-gui.sh",
@@ -211,6 +214,7 @@ require_text(
 require_text(
   "docs/manual-acceptance-record.md",
   "## Build",
+  "scripts/validate-manual-acceptance-record.py",
   "Git commit",
   "scripts/build-local-app.sh",
   "dist/validation/automatic-evidence.md",
@@ -243,6 +247,7 @@ require_text(
 require_text(
   "docs/productization-remaining.md",
   "docs/manual-acceptance-record.md",
+  "scripts/validate-manual-acceptance-record.py",
 )
 require_text(
   "Maccy/Info.plist",
@@ -288,8 +293,17 @@ require_text(
   "pending_thumbnail_jobs_p95_ms",
   "productization validation passed",
 )
+require_text(
+  "scripts/validate-manual-acceptance-record.py",
+  "manual acceptance record validation failed",
+  "summary conclusion must be 通过",
+  "scope is not accepted yet",
+  "scope did not pass",
+  "scope is missing evidence",
+)
 require_executable("scripts/build-local-app.sh")
 require_executable("scripts/write-automatic-evidence.sh")
+require_executable("scripts/validate-manual-acceptance-record.py")
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
 require_executable("scripts/validate-maintenance.sh")
