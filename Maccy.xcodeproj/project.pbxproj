@@ -10,6 +10,8 @@
 		DAC929D7297A0E8B00814F19 /* NSPasteboard.PasteboardType+Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAC929D6297A0E8B00814F19 /* NSPasteboard.PasteboardType+Types.swift */; };
 		2FA51A0E2F31001000AA0001 /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA51A0D2F31001000AA0001 /* AppPreferences.swift */; };
 		2FA51A102F31001100AA0001 /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA51A0F2F31001100AA0001 /* HotKeyManager.swift */; };
+		2FA51A122F31001200AA0001 /* HotKeyRecorderField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA51A112F31001200AA0001 /* HotKeyRecorderField.swift */; };
+		2FA51A142F31001300AA0001 /* HistoryPreviewRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA51A132F31001300AA0001 /* HistoryPreviewRenderer.swift */; };
 		0ABDD5122BB47F1E0054963B /* NSWorkspace+ApplicationName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ABDD5112BB47F1E0054963B /* NSWorkspace+ApplicationName.swift */; };
 		2F12271E2E5C932200A1592A /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = 2F12271D2E5C932200A1592A /* Logging */; };
 		2FA51A052F21000100AA0001 /* ClipboardCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2FA51A062F21000100AA0001 /* ClipboardCore */; };
@@ -60,6 +62,8 @@
 /* Begin PBXFileReference section */
 		2FA51A0D2F31001000AA0001 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
 		2FA51A0F2F31001100AA0001 /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
+		2FA51A112F31001200AA0001 /* HotKeyRecorderField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyRecorderField.swift; sourceTree = "<group>"; };
+		2FA51A132F31001300AA0001 /* HistoryPreviewRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryPreviewRenderer.swift; sourceTree = "<group>"; };
 
 		0ABDD5112BB47F1E0054963B /* NSWorkspace+ApplicationName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSWorkspace+ApplicationName.swift"; sourceTree = "<group>"; };
 
@@ -213,6 +217,8 @@
 				2FA51A0D2F31001000AA0001 /* AppPreferences.swift */,
 				DAEE38461E3DBEB100DD2966 /* AppDelegate.swift */,
 				2FA51A0F2F31001100AA0001 /* HotKeyManager.swift */,
+				2FA51A112F31001200AA0001 /* HotKeyRecorderField.swift */,
+				2FA51A132F31001300AA0001 /* HistoryPreviewRenderer.swift */,
 					DA0EF1871E444B2A00E58577 /* Clipboard.swift */,
 					2FA51A072F21000200AA0001 /* ClipboardCoreStore.swift */,
 					2FA51A092F21000300AA0001 /* DailyExportScheduler.swift */,
@@ -340,6 +346,8 @@
 				2FA51A0E2F31001000AA0001 /* AppPreferences.swift in Sources */,
 				DAEE38471E3DBEB100DD2966 /* AppDelegate.swift in Sources */,
 				2FA51A102F31001100AA0001 /* HotKeyManager.swift in Sources */,
+				2FA51A122F31001200AA0001 /* HotKeyRecorderField.swift in Sources */,
+				2FA51A142F31001300AA0001 /* HistoryPreviewRenderer.swift in Sources */,
 				DA7A753E26A52F0F00DC16EF /* NSImage+Names.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

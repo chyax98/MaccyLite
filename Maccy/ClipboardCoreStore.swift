@@ -28,9 +28,51 @@ final class ClipboardCoreStore {
       logger.error("Failed to create MaccyLite storage directory \(root.path): \(error.localizedDescription)")
     }
     assetStore = ClipboardCore.AssetStore(root: root.appending(path: "Assets"))
-    database = try! ClipboardDatabase(path: root.appending(path: "Clipboard.sqlite"))
+    database = Self.openDatabase(
+      at: root.appending(path: "Clipboard.sqlite"),
+      logger: logger
+    )
     capture = ClipboardCapture(assetStore: assetStore)
     historyStore = ClipboardHistoryStore(database: database, capture: capture)
+  }
+
+  private static func openDatabase(at url: URL, logger: Logger) -> ClipboardDatabase {
+    do {
+      return try ClipboardDatabase(path: url)
+    } catch {
+      logger.error("Failed to open clipboard database \(url.path): \(error.localizedDescription)")
+    }
+
+    do {
+      try backupBrokenDatabase(at: url)
+      return try ClipboardDatabase(path: url)
+    } catch {
+      logger.critical("Failed to recover clipboard database \(url.path): \(error.localizedDescription)")
+      let fallbackURL = url.deletingLastPathComponent()
+        .appending(path: "Clipboard-\(UUID().uuidString).sqlite")
+      do {
+        return try ClipboardDatabase(path: fallbackURL)
+      } catch {
+        fatalError("Failed to create fallback clipboard database: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  private static func backupBrokenDatabase(at url: URL) throws {
+    let backupDirectory = url.deletingLastPathComponent()
+      .appending(path: "BrokenDatabases", directoryHint: .isDirectory)
+      .appending(path: ISO8601DateFormatter().string(from: .now), directoryHint: .isDirectory)
+    try FileManager.default.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
+
+    for suffix in ["", "-wal", "-shm"] {
+      let source = URL(fileURLWithPath: url.path + suffix)
+      guard FileManager.default.fileExists(atPath: source.path) else {
+        continue
+      }
+
+      let destination = backupDirectory.appending(path: source.lastPathComponent)
+      try FileManager.default.moveItem(at: source, to: destination)
+    }
   }
 
   func insert(

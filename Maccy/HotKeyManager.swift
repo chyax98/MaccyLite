@@ -13,6 +13,14 @@ final class HotKeyManager {
 
   @discardableResult
   func start() -> Bool {
+    start(
+      keyCode: AppPreferences.popupHotKeyKeyCode,
+      modifiers: AppPreferences.popupHotKeyModifiers
+    )
+  }
+
+  @discardableResult
+  func start(keyCode: UInt32, modifiers: UInt32) -> Bool {
     stop()
 
     var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -49,8 +57,8 @@ final class HotKeyManager {
 
     let hotKeyID = EventHotKeyID(signature: fourCharCode("MCLT"), id: 1)
     let registerStatus = RegisterEventHotKey(
-      AppPreferences.popupHotKeyKeyCode,
-      AppPreferences.popupHotKeyModifiers,
+      keyCode,
+      modifiers,
       hotKeyID,
       GetApplicationEventTarget(),
       0,

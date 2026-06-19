@@ -265,16 +265,8 @@ public final class ClipboardDatabase: @unchecked Sendable {
 
     return try writer.read { db in
       let recent = try recentLikeSearch(db, query: trimmed, limit: limit)
-      if trimmed.count == 1 {
-        return recent
-      }
-
       if trimmed.count <= 2 {
-        if recent.count >= limit {
-          return recent
-        }
-        let full = try fullLikeSearch(db, query: trimmed, limit: limit)
-        return mergeSearchResults(primary: recent, secondary: full, limit: limit)
+        return recent
       }
 
       if recent.count >= limit {
@@ -738,32 +730,6 @@ public final class ClipboardDatabase: @unchecked Sendable {
       LIMIT ?
       """,
       arguments: [recentSearchScope, likePattern(query), query, prefixPattern(query), candidateLimit]
-    )
-  }
-
-  private func fullLikeSearch(
-    _ db: Database,
-    query: String,
-    limit: Int
-  ) throws -> [ClipboardListItem] {
-    let candidateLimit = searchCandidateLimit(for: limit)
-    return try fetchListItems(
-      db,
-      sql: """
-      SELECT \(listItemColumns(alias: "i"))
-      FROM clipboard_items i
-      WHERE i.search_text LIKE ? ESCAPE '\\'
-      ORDER BY
-        CASE
-          WHEN i.search_text = ? COLLATE NOCASE THEN 0
-          WHEN i.search_text LIKE ? ESCAPE '\\' THEN 1
-          ELSE 2
-        END,
-        i.is_pinned DESC,
-        i.copied_at DESC
-      LIMIT ?
-      """,
-      arguments: [likePattern(query), query, prefixPattern(query), candidateLimit]
     )
   }
 

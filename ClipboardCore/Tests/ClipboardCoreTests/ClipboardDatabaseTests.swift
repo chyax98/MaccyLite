@@ -224,7 +224,7 @@ func databaseCapsVeryLongSearchQueries() throws {
 }
 
 @Test
-func databaseShortChineseQueryFallsBackToFullHistory() throws {
+func databaseShortChineseQueryStaysInRecentSearchScope() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
 
@@ -266,7 +266,7 @@ func databaseShortChineseQueryFallsBackToFullHistory() throws {
     ))
   }
 
-  #expect(try database.search("健康", limit: 10).map(\.id) == ["old-target"])
+  #expect(try database.search("健康", limit: 10).map(\.id) == [])
   #expect(try database.search("健康计划", limit: 10).map(\.id) == ["old-target"])
 }
 

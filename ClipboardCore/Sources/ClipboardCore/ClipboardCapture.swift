@@ -109,74 +109,19 @@ public struct ClipboardCapture: Sendable {
   private func extractedText(from data: Data, type: String) -> String {
     switch type {
     case ClipboardContentType.plainText:
-      return utf8PrefixString(data, limit: policy.searchTextLimit)
+      return ClipboardTextExtractor.plainText(from: data, limit: policy.searchTextLimit)
     case ClipboardContentType.fileURL:
       return String(data: data, encoding: .utf8) ?? ""
     case ClipboardContentType.html:
-      let html = utf8PrefixString(data, limit: min(policy.searchTextLimit, policy.richTextSearchTextLimit))
-      return stripHTML(html)
+      return ClipboardTextExtractor.htmlText(
+        from: data,
+        limit: min(policy.searchTextLimit, policy.richTextSearchTextLimit)
+      )
     case ClipboardContentType.rtf:
       return ""
     default:
       return ""
     }
-  }
-
-  private func stripHTML(_ html: String) -> String {
-    var text = ""
-    text.reserveCapacity(min(html.count, policy.richTextSearchTextLimit))
-    var isInsideTag = false
-    var previousWasWhitespace = false
-    var index = html.startIndex
-
-    while index < html.endIndex {
-      let character = html[index]
-
-      if character == "<" {
-        isInsideTag = true
-        appendSpace(to: &text, previousWasWhitespace: &previousWasWhitespace)
-      } else if character == ">" {
-        isInsideTag = false
-      } else if !isInsideTag {
-        if character.isWhitespace {
-          appendSpace(to: &text, previousWasWhitespace: &previousWasWhitespace)
-        } else {
-          text.append(character)
-          previousWasWhitespace = false
-        }
-      }
-
-      index = html.index(after: index)
-    }
-
-    return text
-      .replacingOccurrences(of: "&nbsp;", with: " ")
-      .replacingOccurrences(of: "&amp;", with: "&")
-      .replacingOccurrences(of: "&lt;", with: "<")
-      .replacingOccurrences(of: "&gt;", with: ">")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-
-  private func appendSpace(to text: inout String, previousWasWhitespace: inout Bool) {
-    guard !previousWasWhitespace, !text.isEmpty else {
-      return
-    }
-
-    text.append(" ")
-    previousWasWhitespace = true
-  }
-
-  private func utf8PrefixString(_ data: Data, limit: Int) -> String {
-    guard data.count > limit else {
-      return String(data: data, encoding: .utf8) ?? ""
-    }
-
-    var prefix = data.prefix(limit)
-    while String(data: prefix, encoding: .utf8) == nil && !prefix.isEmpty {
-      prefix = prefix.dropLast()
-    }
-
-    return String(data: prefix, encoding: .utf8) ?? ""
   }
 
   private func priority(_ type: String) -> Int {

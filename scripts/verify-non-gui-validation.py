@@ -316,12 +316,16 @@ require_text(
   "private func shouldTrimAfterInsert() -> Bool",
 )
 require_text(
-  "Maccy/AppKitHistoryPanel.swift",
+  "Maccy/HistoryPreviewRenderer.swift",
   "QuickLookThumbnailing",
-  "previewImageView",
   "loadPreviewImage",
   "loadFilePreview",
   "filePreviewText",
+)
+require_text(
+  "Maccy/AppKitHistoryPanel.swift",
+  "previewImageView",
+  "HistoryPreviewRenderer",
 )
 require_text(
   "docs/productization-acceptance-matrix.md",
