@@ -2,7 +2,7 @@ import AppKit.NSWorkspace
 import ClipboardCore
 import Foundation
 
-class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
+class HistoryItemDecorator: Identifiable, Hashable {
   static func == (lhs: HistoryItemDecorator, rhs: HistoryItemDecorator) -> Bool {
     return lhs.id == rhs.id
   }
@@ -13,20 +13,12 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   let id = UUID()
   let itemID: String
   var title: String
-  var attributedTitle: AttributedString?
-  var isVisible: Bool = true
-  var selectionIndex: Int = -1
-  var shortcuts: [KeyShortcut]
   private var listItem: ClipboardListItem
   private var fullItem: ClipboardStoredItem?
 
   var applicationImage: ApplicationImage
   var thumbnailImage: NSImage?
   var previewImage: NSImage?
-
-  var isSelected: Bool {
-    selectionIndex != -1
-  }
 
   var isPinned: Bool {
     listItem.isPinned
@@ -68,15 +60,14 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
     .heic
   ]
 
-  init(_ item: ClipboardListItem, shortcuts: [KeyShortcut] = []) {
+  init(_ item: ClipboardListItem) {
     self.listItem = item
     self.itemID = item.id
     self.title = item.displayText
-    self.shortcuts = shortcuts
     self.applicationImage = ApplicationImageCache.shared.getImage(bundleIdentifier: item.sourceApp)
   }
 
-  convenience init(_ item: ClipboardStoredItem, shortcuts: [KeyShortcut] = []) {
+  convenience init(_ item: ClipboardStoredItem) {
     self.init(
       ClipboardListItem(
         id: item.id,
@@ -87,8 +78,7 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
         isPinned: item.isPinned,
         copyCount: item.copyCount,
         hasImage: Self.imageContent(in: item) != nil
-      ),
-      shortcuts: shortcuts
+      )
     )
     self.fullItem = item
   }
@@ -96,7 +86,6 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   func hash(into hasher: inout Hasher) {
     hasher.combine(itemID)
     hasher.combine(title)
-    hasher.combine(attributedTitle)
   }
 
   func update(_ item: ClipboardStoredItem) {
@@ -190,10 +179,6 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
   func sizeImages() {
     thumbnailImage = thumbnailImage?.resized(to: Self.thumbnailImageSize)
     previewImage = previewImage?.resized(to: Self.previewImageSize)
-  }
-
-  func highlight(_ query: String) {
-    attributedTitle = nil
   }
 
   @MainActor

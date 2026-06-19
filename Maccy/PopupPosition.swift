@@ -13,15 +13,15 @@ enum PopupPosition: String, CaseIterable, Identifiable, CustomStringConvertible 
   var description: String {
     switch self {
     case .cursor:
-      return NSLocalizedString("PopupAtCursor", tableName: "AppearanceSettings", comment: "")
+      return "鼠标位置"
     case .statusItem:
-      return NSLocalizedString("PopupAtMenuBarIcon", tableName: "AppearanceSettings", comment: "")
+      return "菜单栏图标"
     case .window:
-      return NSLocalizedString("PopupAtWindowCenter", tableName: "AppearanceSettings", comment: "")
+      return "当前窗口中心"
     case .center:
-      return NSLocalizedString("PopupAtScreenCenter", tableName: "AppearanceSettings", comment: "")
+      return "屏幕中心"
     case .lastPosition:
-      return NSLocalizedString("PopupAtLastPosition", tableName: "AppearanceSettings", comment: "")
+      return "上次位置"
     }
   }
 

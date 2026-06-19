@@ -3,7 +3,7 @@ import ClipboardCore
 import Foundation
 import Logging
 
-class History: ItemsContainer {
+class History {
   static let shared = History()
   let logger = Logger(label: "com.local.MaccyLite")
   private struct MissingHistoryItemError: LocalizedError {
@@ -20,34 +20,6 @@ class History: ItemsContainer {
 
   private(set) var pinnedItems: [HistoryItemDecorator] = []
   private(set) var unpinnedItems: [HistoryItemDecorator] = []
-  private(set) var visiblePinnedItems: [HistoryItemDecorator] = []
-  private(set) var visibleUnpinnedItems: [HistoryItemDecorator] = []
-  private(set) var visibleItems: [HistoryItemDecorator] = []
-
-  var firstVisibleItem: HistoryItemDecorator? {
-    visibleItems.first
-  }
-
-  var lastVisibleItem: HistoryItemDecorator? {
-    visibleItems.last
-  }
-
-  func firstVisibleItem(where predicate: (HistoryItemDecorator) -> Bool) -> HistoryItemDecorator? {
-    visibleItems.first(where: predicate)
-  }
-
-  func lastVisibleItem(where predicate: (HistoryItemDecorator) -> Bool) -> HistoryItemDecorator? {
-    visibleItems.last(where: predicate)
-  }
-
-  func visibleItem(before item: HistoryItemDecorator) -> HistoryItemDecorator? {
-    visibleItems.item(before: item, where: { _ in true })
-  }
-
-  func visibleItem(after item: HistoryItemDecorator) -> HistoryItemDecorator? {
-    visibleItems.item(after: item, where: { _ in true })
-  }
-
   var searchQuery: String = "" {
     didSet {
       throttler.throttle { [self] in
@@ -76,7 +48,6 @@ class History: ItemsContainer {
     items.removeAll { $0.itemID == item.id }
     items.insert(decorator, at: 0)
     limitVisibleHistorySize(to: AppPreferences.size)
-    updateShortcuts()
   }
 
   @MainActor
@@ -85,7 +56,6 @@ class History: ItemsContainer {
     items.removeAll(where: \.isUnpinned)
     Clipboard.shared.clear()
     AppState.shared.popup.close()
-    updateShortcuts()
     deleteItemsInBackground(itemIDs)
   }
 
@@ -106,7 +76,6 @@ class History: ItemsContainer {
     let itemID = item.itemID
     items.removeAll { $0 == item }
 
-    updateShortcuts()
     deleteItemsInBackground([itemID])
   }
 
@@ -159,7 +128,6 @@ class History: ItemsContainer {
     sortPinned()
 
     searchQuery = ""
-    updateShortcuts()
   }
 
   @MainActor
@@ -178,13 +146,8 @@ class History: ItemsContainer {
       return
     }
 
-    items = storedItems.map { storedItem in
-      let decorator = HistoryItemDecorator(storedItem)
-      decorator.highlight(query)
-      return decorator
-    }
+    items = storedItems.map(HistoryItemDecorator.init)
     sortPinned()
-    updateShortcuts()
   }
 
   @MainActor
@@ -276,53 +239,19 @@ class History: ItemsContainer {
     rebuildItemCaches()
   }
 
-  private func updateShortcuts() {
-    for item in pinnedItems {
-      item.shortcuts = []
-    }
-
-    updateUnpinnedShortcuts()
-  }
-
-  private func updateUnpinnedShortcuts() {
-    for item in visibleUnpinnedItems {
-      item.shortcuts = []
-    }
-
-    var index = 1
-    for item in visibleUnpinnedItems.prefix(9) {
-      item.shortcuts = KeyShortcut.create(character: String(index))
-      index += 1
-    }
-  }
-
   private func rebuildItemCaches() {
     var pinnedItems: [HistoryItemDecorator] = []
     var unpinnedItems: [HistoryItemDecorator] = []
-    var visiblePinnedItems: [HistoryItemDecorator] = []
-    var visibleUnpinnedItems: [HistoryItemDecorator] = []
-    var visibleItems: [HistoryItemDecorator] = []
 
     for item in items {
       if item.isPinned {
         pinnedItems.append(item)
-        if item.isVisible {
-          visiblePinnedItems.append(item)
-          visibleItems.append(item)
-        }
       } else {
         unpinnedItems.append(item)
-        if item.isVisible {
-          visibleUnpinnedItems.append(item)
-          visibleItems.append(item)
-        }
       }
     }
 
     self.pinnedItems = pinnedItems
     self.unpinnedItems = unpinnedItems
-    self.visiblePinnedItems = visiblePinnedItems
-    self.visibleUnpinnedItems = visibleUnpinnedItems
-    self.visibleItems = visibleItems
   }
 }

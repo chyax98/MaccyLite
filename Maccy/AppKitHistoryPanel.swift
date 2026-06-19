@@ -221,11 +221,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
           ? ClipboardCoreStore.shared.latest(limit: 200)
           : ClipboardCoreStore.shared.search(trimmed, limit: 200)
 
-        return listItems.map { listItem in
-          let decorator = HistoryItemDecorator(listItem)
-          decorator.highlight(trimmed)
-          return decorator
-        }
+        return listItems.map(HistoryItemDecorator.init)
       }.value
 
       guard !Task.isCancelled else { return }

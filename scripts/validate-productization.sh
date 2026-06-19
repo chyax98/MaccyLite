@@ -9,6 +9,9 @@ scripts/validate-non-gui.sh
 echo "== Maintenance CLI validation =="
 scripts/validate-maintenance.sh
 
+echo "== Runtime links validation =="
+scripts/validate-runtime-links.sh
+
 if [[ "${FULL_PERFORMANCE:-0}" == "1" ]]; then
   export TEXT_ITEMS="${TEXT_ITEMS:-100000}"
   export MIXED_ITEMS="${MIXED_ITEMS:-10000}"
