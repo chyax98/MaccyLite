@@ -65,6 +65,7 @@ public struct ClipboardListItem: Sendable, Equatable {
   public var isPinned: Bool
   public var copyCount: Int
   public var hasImage: Bool
+  public var contentFingerprint: String?
 
   public init(
     id: String,
@@ -74,7 +75,8 @@ public struct ClipboardListItem: Sendable, Equatable {
     displayText: String,
     isPinned: Bool,
     copyCount: Int = 1,
-    hasImage: Bool = false
+    hasImage: Bool = false,
+    contentFingerprint: String? = nil
   ) {
     self.id = id
     self.copiedAt = copiedAt
@@ -84,6 +86,7 @@ public struct ClipboardListItem: Sendable, Equatable {
     self.isPinned = isPinned
     self.copyCount = copyCount
     self.hasImage = hasImage
+    self.contentFingerprint = contentFingerprint
   }
 }
 

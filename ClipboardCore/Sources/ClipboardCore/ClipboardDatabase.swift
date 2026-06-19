@@ -284,6 +284,10 @@ public final class ClipboardDatabase: @unchecked Sendable {
 
     return try writer.read { db in
       let recent = try recentLikeSearch(db, query: trimmed, limit: limit)
+      if trimmed.count == 1 {
+        return recent
+      }
+
       if trimmed.count <= 2 {
         if recent.count >= limit {
           return recent
@@ -292,15 +296,12 @@ public final class ClipboardDatabase: @unchecked Sendable {
         return mergeSearchResults(primary: recent, secondary: full, limit: limit)
       }
 
-      let expanded = try ftsSearch(db, query: trimmed, limit: limit)
-      let merged = mergeSearchResults(primary: recent, secondary: expanded, limit: limit)
-
-      guard merged.count < limit else {
-        return merged
+      if recent.count >= limit {
+        return recent
       }
 
-      let full = try fullLikeSearch(db, query: trimmed, limit: limit)
-      return mergeSearchResults(primary: merged, secondary: full, limit: limit)
+      let expanded = try ftsSearch(db, query: trimmed, limit: limit)
+      return mergeSearchResults(primary: recent, secondary: expanded, limit: limit)
     }
   }
 
@@ -712,7 +713,8 @@ public final class ClipboardDatabase: @unchecked Sendable {
         displayText: row["display_text"],
         isPinned: (row["is_pinned"] as Int) != 0,
         copyCount: row["copy_count"],
-        hasImage: hasImage != 0
+        hasImage: hasImage != 0,
+        contentFingerprint: row["content_fingerprint"]
       )
     }
   }
@@ -730,7 +732,8 @@ public final class ClipboardDatabase: @unchecked Sendable {
     query: String,
     limit: Int
   ) throws -> [ClipboardListItem] {
-    try fetchListItems(
+    let candidateLimit = searchCandidateLimit(for: limit)
+    return try fetchListItems(
       db,
       sql: """
       SELECT \(listItemColumns(alias: "i"))
@@ -743,17 +746,17 @@ public final class ClipboardDatabase: @unchecked Sendable {
         LIMIT ?
       ) i
       WHERE search_text LIKE ? ESCAPE '\\'
-        AND \(visibleFingerprintPredicate(alias: "i"))
       ORDER BY
         CASE
           WHEN search_text = ? COLLATE NOCASE THEN 0
           WHEN search_text LIKE ? ESCAPE '\\' THEN 1
           ELSE 2
         END,
+        is_pinned DESC,
         copied_at DESC
       LIMIT ?
       """,
-      arguments: [recentSearchScope, likePattern(query), query, prefixPattern(query), limit]
+      arguments: [recentSearchScope, likePattern(query), query, prefixPattern(query), candidateLimit]
     )
   }
 
@@ -762,23 +765,24 @@ public final class ClipboardDatabase: @unchecked Sendable {
     query: String,
     limit: Int
   ) throws -> [ClipboardListItem] {
-    try fetchListItems(
+    let candidateLimit = searchCandidateLimit(for: limit)
+    return try fetchListItems(
       db,
       sql: """
       SELECT \(listItemColumns(alias: "i"))
       FROM clipboard_items i
       WHERE i.search_text LIKE ? ESCAPE '\\'
-        AND \(visibleFingerprintPredicate(alias: "i"))
       ORDER BY
         CASE
           WHEN i.search_text = ? COLLATE NOCASE THEN 0
           WHEN i.search_text LIKE ? ESCAPE '\\' THEN 1
           ELSE 2
         END,
+        i.is_pinned DESC,
         i.copied_at DESC
       LIMIT ?
       """,
-      arguments: [likePattern(query), query, prefixPattern(query), limit]
+      arguments: [likePattern(query), query, prefixPattern(query), candidateLimit]
     )
   }
 
@@ -789,6 +793,7 @@ public final class ClipboardDatabase: @unchecked Sendable {
   ) throws -> [ClipboardListItem] {
     let useTrigram = containsCJK(query)
     let table = useTrigram ? "clipboard_trigram" : "clipboard_search"
+    let candidateLimit = searchCandidateLimit(for: limit)
     return try fetchListItems(
       db,
       sql: """
@@ -796,7 +801,6 @@ public final class ClipboardDatabase: @unchecked Sendable {
       FROM \(table) s
       JOIN clipboard_items i ON i.id = s.item_id
       WHERE s.text MATCH ?
-        AND \(visibleFingerprintPredicate(alias: "i"))
       ORDER BY
         CASE
           WHEN i.search_text = ? COLLATE NOCASE THEN 0
@@ -804,10 +808,11 @@ public final class ClipboardDatabase: @unchecked Sendable {
           WHEN i.search_text LIKE ? ESCAPE '\\' THEN 2
           ELSE 3
         END,
+        i.is_pinned DESC,
         i.copied_at DESC
       LIMIT ?
       """,
-      arguments: [ftsQuery(query, prefixTokens: !useTrigram), query, prefixPattern(query), likePattern(query), limit]
+      arguments: [ftsQuery(query, prefixTokens: !useTrigram), query, prefixPattern(query), likePattern(query), candidateLimit]
     )
   }
 
@@ -821,6 +826,12 @@ public final class ClipboardDatabase: @unchecked Sendable {
 
     for item in primary + secondary where !seen.contains(item.id) {
       seen.insert(item.id)
+      if let fingerprint = item.contentFingerprint, !fingerprint.isEmpty {
+        guard !seen.contains(fingerprint) else {
+          continue
+        }
+        seen.insert(fingerprint)
+      }
       merged.append(item)
       if merged.count == limit {
         break
@@ -840,8 +851,13 @@ public final class ClipboardDatabase: @unchecked Sendable {
     \(prefix)display_text,
     \(prefix)has_image,
     \(prefix)is_pinned,
-    \(prefix)copy_count
+    \(prefix)copy_count,
+    \(prefix)content_fingerprint
     """
+  }
+
+  private func searchCandidateLimit(for limit: Int) -> Int {
+    max(limit, min(limit * 4, 500))
   }
 
   private func visibleFingerprintPredicate(alias: String) -> String {

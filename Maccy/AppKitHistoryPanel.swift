@@ -369,7 +369,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     debounceTask?.cancel()
     let pendingQuery = query
     debounceTask = Task {
-      try? await Task.sleep(nanoseconds: 120_000_000)
+      try? await Task.sleep(nanoseconds: Self.searchDebounceNanoseconds)
       guard !Task.isCancelled else { return }
       await MainActor.run {
         self.reload(query: pendingQuery)
@@ -806,6 +806,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
   nonisolated private static let textPreviewCharacterLimit = 200_000
   nonisolated private static let textPreviewFullReadByteLimit = 1_000_000
   nonisolated private static let textPreviewPrefixByteLimit = 800_000
+  nonisolated private static let searchDebounceNanoseconds: UInt64 = 250_000_000
 
   nonisolated private struct TextPreviewPayload: Sendable {
     var text: String

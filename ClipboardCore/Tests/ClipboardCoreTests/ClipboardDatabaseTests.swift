@@ -180,6 +180,52 @@ func databaseShortChineseQueryFallsBackToFullHistory() throws {
 }
 
 @Test
+func databaseSingleCharacterQueryStaysInRecentSearchScope() throws {
+  let directory = try temporaryDirectory()
+  let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
+
+  try database.insert(ClipboardItemDraft(
+    id: "old-target",
+    copiedAt: Date(timeIntervalSince1970: 1),
+    sourceApp: nil,
+    primaryType: ClipboardContentType.plainText,
+    displayText: "旧健康",
+    searchText: "旧健康",
+    contents: [
+      ClipboardContentDraft(
+        pasteboardType: ClipboardContentType.plainText,
+        byteCount: 9,
+        inlineData: Data("旧健康".utf8),
+        assetPath: nil,
+        contentHash: "old-target"
+      )
+    ]
+  ))
+
+  for index in 0..<5_001 {
+    try database.insert(ClipboardItemDraft(
+      id: "recent-\(index)",
+      copiedAt: Date(timeIntervalSince1970: Double(index + 2)),
+      sourceApp: nil,
+      primaryType: ClipboardContentType.plainText,
+      displayText: "普通记录 \(index)",
+      searchText: "普通记录 \(index)",
+      contents: [
+        ClipboardContentDraft(
+          pasteboardType: ClipboardContentType.plainText,
+          byteCount: 16,
+          inlineData: Data("普通记录 \(index)".utf8),
+          assetPath: nil,
+          contentHash: "recent-\(index)"
+        )
+      ]
+    ))
+  }
+
+  #expect(try database.search("健", limit: 10).isEmpty)
+}
+
+@Test
 func databaseSearchMatchesMultipleTermsWithoutRequiringExactPhrase() throws {
   let directory = try temporaryDirectory()
   let database = try ClipboardDatabase(path: directory.appending(path: "Clipboard.sqlite"))
