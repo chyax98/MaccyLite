@@ -529,13 +529,26 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewTextScrollView.isHidden = false
     contentView?.layoutSubtreeIfNeeded()
     let textWidth = max(previewTextScrollView.contentSize.width, 240)
-    previewTextView.frame = NSRect(origin: .zero, size: NSSize(width: textWidth, height: 1))
+    previewTextView.frame = NSRect(
+      origin: .zero,
+      size: NSSize(width: textWidth, height: max(previewTextScrollView.contentSize.height, 260))
+    )
     previewTextView.textContainer?.containerSize = NSSize(
       width: textWidth,
       height: CGFloat.greatestFiniteMagnitude
     )
     previewTextView.string = text
-    previewTextView.sizeToFit()
+    if let layoutManager = previewTextView.layoutManager,
+       let textContainer = previewTextView.textContainer {
+      layoutManager.ensureLayout(for: textContainer)
+      let usedHeight = layoutManager.usedRect(for: textContainer).height
+      let insetHeight = previewTextView.textContainerInset.height * 2
+      let documentHeight = max(
+        previewTextScrollView.contentSize.height,
+        ceil(usedHeight + insetHeight + 16)
+      )
+      previewTextView.setFrameSize(NSSize(width: textWidth, height: documentHeight))
+    }
     previewTextView.scrollToBeginningOfDocument(nil)
   }
 
