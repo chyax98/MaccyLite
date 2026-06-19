@@ -52,6 +52,12 @@ FULL_PERFORMANCE=1 scripts/validate-productization.sh
 
 真实快捷键、面板焦点、Accessibility 自动粘贴只做人工验收，清单见 `docs/manual-acceptance.md`。
 
+准备本地人工验收 App：
+
+```sh
+scripts/build-local-app.sh
+```
+
 产品化剩余闭环见 `docs/productization-remaining.md`。
 
 ## 维护命令

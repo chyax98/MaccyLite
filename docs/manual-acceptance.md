@@ -8,6 +8,7 @@
 - macOS：
 - 构建方式：Xcode Run / Debug app / Release app
 - App 路径：
+- 本地验收 App：`scripts/build-local-app.sh` 输出路径
 - 验收人：
 - 结论：通过 / 有问题
 - 问题记录：
@@ -67,6 +68,7 @@
 ## 安装与长期运行
 
 - [ ] 本地构建产物去 quarantine / ad-hoc 签名后可启动。
+- [ ] `scripts/build-local-app.sh` 生成的 `dist/local/MaccyLite.app` 可启动。
 - [ ] 放到 `/Applications` 后可启动。
 - [ ] 确认 MaccyLite 从空历史开始，不迁移旧 Maccy 历史和设置。
 - [ ] 持续运行观察没有明显内存增长、Timer 异常或 thumbnail backlog 堆积。

@@ -10,6 +10,14 @@
 - 菜单栏 App 和 Accessibility 粘贴依赖真实 macOS session，交互验收只在人工运行时做。
 - `CODE_SIGNING_ALLOWED=NO` 构建出来的 `.app` 只适合验证编译，不适合双击长期运行。
 
+也可以生成一个本地人工验收用的 Release App：
+
+```sh
+scripts/build-local-app.sh
+```
+
+脚本会编译 `Release`、复制到 `dist/local/MaccyLite.app`、执行 ad-hoc 签名、去掉 quarantine，并验证签名。它不会启动 App，也不会申请 Accessibility 权限。
+
 ## 命令行编译验证
 
 ```sh
@@ -50,9 +58,8 @@ open /path/to/MaccyLite.app
 
 长期放到 `/Applications` 使用时，建议：
 
-- 用 Xcode archive 或 Debug/Release build 生成 App。
-- 执行 ad-hoc 签名。
-- 去掉 quarantine。
+- 先运行 `scripts/build-local-app.sh`。
+- 把 `dist/local/MaccyLite.app` 复制到 `/Applications`。
 - 第一次自动粘贴前在系统设置里授予 Accessibility 权限。App 会触发系统授权提示；未授权时只会复制到剪贴板，不会继续模拟 Cmd+V。
 
 ## 当前测试策略

@@ -163,6 +163,7 @@ require_text(
   "README.md",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
+  "scripts/build-local-app.sh",
   "docs/manual-acceptance.md",
 )
 require_text(
@@ -192,6 +193,8 @@ require_text(
 )
 require_text(
   "docs/development.md",
+  "scripts/build-local-app.sh",
+  "dist/local/MaccyLite.app",
   "scripts/validate-productization.sh",
   "FULL_PERFORMANCE=1 scripts/validate-productization.sh",
   "scripts/validate-non-gui.sh",
@@ -201,6 +204,8 @@ require_text(
   "docs/manual-acceptance.md",
   "## 验收记录",
   "- [ ]",
+  "scripts/build-local-app.sh",
+  "dist/local/MaccyLite.app",
   "Accessibility",
   "Clipboard capture sample",
   "复制失败",
@@ -232,6 +237,15 @@ require_text(
   "assert(Thread.isMainThread)",
   "RunLoop.main.add(timer, forMode: .common)",
 )
+require_text(
+  "scripts/build-local-app.sh",
+  "CODE_SIGNING_ALLOWED=NO",
+  "codesign --force --deep --sign -",
+  "xattr -dr com.apple.quarantine",
+  "codesign --verify --deep --strict",
+  "dist/local",
+)
+require_executable("scripts/build-local-app.sh")
 require_executable("scripts/validate-productization.sh")
 require_executable("scripts/validate-non-gui.sh")
 require_executable("scripts/validate-maintenance.sh")
