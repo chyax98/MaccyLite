@@ -25,6 +25,8 @@ MaccyLite 是一个面向自用的 macOS 快捷粘贴工具，基于 Maccy fork 
 
 只保留简体中文资源。
 
+MaccyLite 作为新应用处理，不迁移旧 Maccy 历史和设置；发布说明见 `docs/release-notes.md`。
+
 ## 技术结构
 
 - App：SwiftUI + NSPanel。

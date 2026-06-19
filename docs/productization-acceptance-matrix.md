@@ -11,6 +11,7 @@
 | 每日导出可用 | exporter、schedule policy、catch-up、file URL、图片 metadata、Markdown fence 测试 | 设置页启停、手动导出、打开目录、失败反馈、定时/补导出失败状态栏提示 | 自动已覆盖核心，待人工 |
 | 非必要功能清理 | `scripts/verify-non-gui-validation.py` 禁止旧路径回归 | 设置页和菜单无明显无效入口 | 自动已覆盖文件/target，待人工 |
 | 中文优先 | 静态验证仅允许 `zh-Hans.lproj` | UI 文案可接受，无混乱英文主路径 | 自动已覆盖资源，待人工 |
+| 旧数据迁移取舍 | `docs/release-notes.md` 明确不迁移旧 Maccy 历史/设置 | 用户接受新应用从空历史开始 | 已明确取舍，待人工确认 |
 | 长期自用安装 | App build 通过，文档包含签名/quarantine 处理 | `/Applications` 启动、权限授权、长期运行观察 | 待人工 |
 
 ## Required Commands
@@ -33,4 +34,4 @@ TEXT_ITEMS=100000 MIXED_ITEMS=10000 RUNS=20 scripts/validate-performance.sh
 - 自动证据必须全部通过。
 - `docs/manual-acceptance.md` 的人工项必须完成。
 - 人工发现的问题如果属于核心捕获、搜索、粘贴、导出或大对象恢复，必须修复并尽量转成自动测试。
-- 旧 Maccy 数据迁移必须明确取舍：本项目作为新项目时可接受不迁移，但需要在发布说明中写清楚。
+- 旧 Maccy 数据迁移取舍见 `docs/release-notes.md`：本项目作为新应用，不迁移旧历史和设置。
