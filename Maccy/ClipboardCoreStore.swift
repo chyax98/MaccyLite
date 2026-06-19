@@ -2,10 +2,12 @@ import AppKit
 import ClipboardCore
 import Defaults
 import Foundation
+import Logging
 
 final class ClipboardCoreStore {
   static let shared = ClipboardCoreStore()
 
+  private let logger = Logger(label: "com.local.MaccyLite.store")
   private let database: ClipboardDatabase
   private let assetStore: ClipboardCore.AssetStore
   private let capture: ClipboardCapture
@@ -15,7 +17,11 @@ final class ClipboardCoreStore {
   private init() {
     let root = URL.applicationSupportDirectory.appending(path: "MaccyLite")
     self.root = root
-    try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    do {
+      try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    } catch {
+      logger.error("Failed to create MaccyLite storage directory \(root.path): \(error.localizedDescription)")
+    }
     assetStore = ClipboardCore.AssetStore(root: root.appending(path: "Assets"))
     database = try! ClipboardDatabase(path: root.appending(path: "Clipboard.sqlite"))
     capture = ClipboardCapture(assetStore: assetStore)
@@ -27,32 +33,64 @@ final class ClipboardCoreStore {
     sourceApp: String?,
     copiedAt: Date = .now
   ) -> ClipboardStoredItem? {
-    guard let item = try? historyStore.insert(contents: contents, sourceApp: sourceApp, copiedAt: copiedAt) else {
+    do {
+      guard let item = try historyStore.insert(contents: contents, sourceApp: sourceApp, copiedAt: copiedAt) else {
+        return nil
+      }
+
+      do {
+        try historyStore.trimUnpinned(maxCount: Defaults[.size])
+      } catch {
+        logger.error("Failed to trim clipboard history after insert: \(error.localizedDescription)")
+      }
+      return item
+    } catch {
+      logger.error("Failed to insert clipboard item: \(error.localizedDescription)")
       return nil
     }
-
-    try? historyStore.trimUnpinned(maxCount: Defaults[.size])
-    return item
   }
 
   func latest(limit: Int = 50, offset: Int = 0) -> [ClipboardListItem] {
-    (try? historyStore.latestList(limit: limit, offset: offset)) ?? []
+    do {
+      return try historyStore.latestList(limit: limit, offset: offset)
+    } catch {
+      logger.error("Failed to load latest clipboard items: \(error.localizedDescription)")
+      return []
+    }
   }
 
   func search(_ query: String, limit: Int = 50) -> [ClipboardListItem] {
-    (try? historyStore.searchList(query, limit: limit)) ?? []
+    do {
+      return try historyStore.searchList(query, limit: limit)
+    } catch {
+      logger.error("Failed to search clipboard items for query '\(query)': \(error.localizedDescription)")
+      return []
+    }
   }
 
   func item(id: String) -> ClipboardStoredItem? {
-    try? historyStore.selectedItem(id: id)
+    do {
+      return try historyStore.selectedItem(id: id)
+    } catch {
+      logger.error("Failed to load clipboard item \(id): \(error.localizedDescription)")
+      return nil
+    }
   }
 
   func setPinned(_ isPinned: Bool, itemID: String) {
-    try? historyStore.setPinned(isPinned, itemID: itemID)
+    do {
+      try historyStore.setPinned(isPinned, itemID: itemID)
+    } catch {
+      logger.error("Failed to set pinned=\(isPinned) for clipboard item \(itemID): \(error.localizedDescription)")
+    }
   }
 
   func delete(itemID: String) {
-    try? historyStore.delete(itemID: itemID)
+    do {
+      try historyStore.delete(itemID: itemID)
+    } catch {
+      logger.error("Failed to delete clipboard item \(itemID): \(error.localizedDescription)")
+    }
   }
 
   @discardableResult
@@ -61,7 +99,12 @@ final class ClipboardCoreStore {
   }
 
   func exportRecord(day: Date) -> DailyExportRecord? {
-    try? database.exportRecord(day: day)
+    do {
+      return try database.exportRecord(day: day)
+    } catch {
+      logger.error("Failed to load daily export record for \(day): \(error.localizedDescription)")
+      return nil
+    }
   }
 
   func exportItemCount(day: Date, calendar: Calendar = .current) -> Int? {
@@ -69,23 +112,56 @@ final class ClipboardCoreStore {
     guard let end = calendar.date(byAdding: .day, value: 1, to: start) else {
       return nil
     }
-    return try? database.itemCount(from: start, to: end)
+    do {
+      return try database.itemCount(from: start, to: end)
+    } catch {
+      logger.error("Failed to count daily export items for \(day): \(error.localizedDescription)")
+      return nil
+    }
   }
 
   @discardableResult
   func removeOrphanAssets() -> [String] {
-    (try? dailyExporter().removeOrphanAssets()) ?? []
+    do {
+      return try dailyExporter().removeOrphanAssets()
+    } catch {
+      logger.error("Failed to remove orphan clipboard assets: \(error.localizedDescription)")
+      return []
+    }
   }
 
   @discardableResult
   func generatePendingThumbnails(limit: Int = 20) -> Int {
-    let jobs = (try? database.pendingThumbnailJobs(limit: limit)) ?? []
+    let jobs = {
+      do {
+        return try database.pendingThumbnailJobs(limit: limit)
+      } catch {
+        logger.error("Failed to load pending thumbnail jobs: \(error.localizedDescription)")
+        return []
+      }
+    }()
+
     var generated = 0
 
     for job in jobs {
-      guard let originalData = try? assetStore.read(job.assetPath),
-            let thumbnailData = ImageThumbnailGenerator.pngThumbnail(from: originalData, maxPixelSize: 512),
-            let thumbnailAsset = try? assetStore.write(thumbnailData, type: ClipboardContentType.png) else {
+      let originalData: Data
+      do {
+        originalData = try assetStore.read(job.assetPath)
+      } catch {
+        logger.error("Failed to read image asset for thumbnail \(job.assetPath): \(error.localizedDescription)")
+        continue
+      }
+
+      guard let thumbnailData = ImageThumbnailGenerator.pngThumbnail(from: originalData, maxPixelSize: 512) else {
+        logger.error("Failed to generate thumbnail data for asset \(job.assetPath)")
+        continue
+      }
+
+      let thumbnailAsset: StoredAsset
+      do {
+        thumbnailAsset = try assetStore.write(thumbnailData, type: ClipboardContentType.png)
+      } catch {
+        logger.error("Failed to write thumbnail asset for \(job.assetPath): \(error.localizedDescription)")
         continue
       }
 
@@ -96,7 +172,12 @@ final class ClipboardCoreStore {
         )
         generated += 1
       } catch {
-        try? assetStore.remove(thumbnailAsset.relativePath)
+        logger.error("Failed to mark thumbnail generated for \(job.assetPath): \(error.localizedDescription)")
+        do {
+          try assetStore.remove(thumbnailAsset.relativePath)
+        } catch {
+          logger.error("Failed to remove orphan thumbnail \(thumbnailAsset.relativePath): \(error.localizedDescription)")
+        }
       }
     }
 

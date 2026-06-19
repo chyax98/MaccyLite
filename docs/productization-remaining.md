@@ -23,7 +23,7 @@
 
 - `ClipboardCoreStore` App 边界：
   - `ClipboardHistoryStore` / payload resolver / daily exporter 覆盖核心行为。
-  - App glue 仍保留少量 `try?` 降级路径，靠 App build 和人工验收确认 UX。
+  - Store 读写、搜索、pin、删除、缩略图、导出记录失败会写 error 日志；列表/搜索等读路径失败时降级为空结果，靠 App build 和人工验收确认 UX。
 - `DailyExportScheduler` App 边界：
   - `DailyExportSchedulePolicy` 已覆盖 next fire date、catch-up、已导出判定。
   - 手动导出失败有设置页错误；定时/启动补导出失败有状态栏提示。
