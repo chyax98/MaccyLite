@@ -145,3 +145,5 @@ xcodebuild \
 默认自动验证只覆盖 Core、静态配置和 App 编译，不启动菜单栏 App。
 
 真实快捷键、面板焦点、Accessibility 自动粘贴、TCC 授权提示都属于人工验收，清单见 [manual-acceptance.md](manual-acceptance.md)。
+
+产品化是否可以关闭，按 [productization-acceptance-matrix.md](productization-acceptance-matrix.md) 判定。

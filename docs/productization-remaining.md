@@ -1,6 +1,8 @@
 # Productization Remaining Work
 
-当前状态：核心架构已切到 `ClipboardCore` + SQLite/FTS5 + asset store，非 GUI 验证可通过。还不能标记产品化完成，下面这些项需要继续闭环。
+当前状态：核心架构已切到 `ClipboardCore` + SQLite/FTS5 + asset store，非 GUI 验证和性能闸门可通过。还不能标记产品化完成，因为真实 macOS 交互、TCC 权限和长期运行只能人工验收。
+
+最终验收矩阵见 `docs/productization-acceptance-matrix.md`。
 
 ## 已有自动闸门
 
@@ -11,20 +13,23 @@
   - 禁止 UI/e2e 测试目标。
   - 禁止重新引入 SwiftData/Vision/Sparkle/AppIntents/多语言资源/旧测试目录。
   - 禁止构建产物被 Git 跟踪。
+- `scripts/validate-performance.sh`
+  - 对 latest/search/thumbnail 查询设置 p95 阈值。
+  - mixed benchmark 必须产生 asset 文件和 pending thumbnail jobs。
 - `xcodebuild ... CODE_SIGNING_ALLOWED=NO build`
   - 只验证 App 编译，不启动 App。
 
-## 还需要自动化补齐
+## 自动化已收口
 
 - `ClipboardCoreStore` App 边界：
-  - 当前主要靠 Core 测试间接覆盖。
-  - 需要抽出可注入时钟/路径/队列后，直接测 export、asset cleanup、selected payload 的 App glue。
+  - `ClipboardHistoryStore` / payload resolver / daily exporter 覆盖核心行为。
+  - App glue 仍保留少量 `try?` 降级路径，靠 App build 和人工验收确认 UX。
 - `DailyExportScheduler` App 边界：
-  - Core 的 `DailyExportSchedulePolicy` 已测。
-  - Scheduler 本体还缺非 GUI 测试，需要避免真实 Timer 依赖。
+  - `DailyExportSchedulePolicy` 已覆盖 next fire date、catch-up、已导出判定。
+  - 手动导出失败有设置页错误；定时/启动补导出失败有状态栏提示。
 - `Clipboard.swift` 捕获路径：
   - 真实 `NSPasteboard` 只能人工验收。
-  - 可继续把类型选择/过滤/大对象策略拆成纯函数后测试，降低手测压力。
+  - 类型选择/过滤规则已下沉到 `ClipboardPasteboardCaptureRules` 并覆盖空文本、富文本、禁用类型、动态类型、Microsoft link 和 sidecar 类型。
 - 性能基准回归：
   - 已有 benchmark 数字和 `scripts/validate-performance.sh` 阈值脚本。
   - AppShell 已对 pasteboard capture 和 thumbnail generation 做运行时采样，慢样本打 warning。
@@ -47,9 +52,9 @@
 - asset 缺失时 Core 能报错，App 会记录 warning 并短暂显示“复制失败”；还需要人工确认真实恢复体验。
 - 长期运行的内存、Timer、thumbnail backlog 还需要一轮实际使用观察。
 
-## 当前下一步建议
+## 当前下一步
 
-1. 抽出 `DailyExportScheduler` 可测边界，补非 GUI 测试。
-2. 抽出 `Clipboard.swift` 的 pasteboard 类型选择逻辑，补纯函数测试。
-3. 跑一次 full release benchmark，更新 `docs/benchmark-report.md`。
-4. 按 `docs/manual-acceptance.md` 做人工验收，并把失败项转成可回归测试或明确修复任务。
+1. 跑一次 full release benchmark，更新 `docs/benchmark-report.md`。
+2. 按 `docs/manual-acceptance.md` 做人工验收。
+3. 明确旧 Maccy 数据不迁移，或另开迁移任务。
+4. 人工验收失败项转成可回归测试或明确修复任务。
