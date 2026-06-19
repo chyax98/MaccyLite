@@ -520,6 +520,13 @@ for source_root in ["Maccy", "ClipboardCore"]:
       if forbidden_identity in text:
         fail(f"{path.relative_to(ROOT)} still contains upstream bundle identity {forbidden_identity}")
 
+for path in (ROOT / "Maccy").rglob("*.swift"):
+  if ".build" in path.parts or not path.is_file():
+    continue
+  text = path.read_text(errors="ignore")
+  if "generatePendingThumbnails" in text:
+    fail(f"{path.relative_to(ROOT)} must not generate thumbnails at app runtime")
+
 for path in (ROOT / "ClipboardCore/Tests").rglob("*.swift"):
   text = path.read_text(errors="ignore")
   for forbidden in [

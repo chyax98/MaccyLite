@@ -16,6 +16,8 @@ class Clipboard: @unchecked Sendable {
   private var timer: Timer?
   private let logger = Logger(label: "com.local.MaccyLite.clipboard")
   private let captureQueue = DispatchQueue(label: "com.local.MaccyLite.clipboard.capture", qos: .utility)
+  private var cachedIgnoreRegexpPatterns: [String] = []
+  private var cachedIgnoreRegexps: [NSRegularExpression] = []
 
   private let supportedTypes: Set<NSPasteboard.PasteboardType> = [
     .fileURL,
@@ -220,24 +222,6 @@ class Clipboard: @unchecked Sendable {
       DispatchQueue.main.async {
         self?.onNewCoreCopyHooks.forEach({ $0(coreItem) })
       }
-
-      if coreItem.contents.contains(where: { $0.imageWidth != nil || $0.imageHeight != nil }) {
-        let thumbnailStartedAt = ContinuousClock.now
-        let generated = ClipboardCoreStore.shared.generatePendingThumbnails(limit: 2)
-        let elapsed = thumbnailStartedAt.duration(to: ContinuousClock.now).milliseconds
-        let thumbnailSample = ThumbnailPerformanceSample(
-          generatedCount: generated,
-          elapsedMilliseconds: elapsed
-        )
-        if generated > 0 {
-          let thumbnailMessage = "Thumbnail generation sample: generated=\(generated) elapsed_ms=\(elapsed)"
-          if self?.performancePolicy.thumbnailExceededWarningThreshold(thumbnailSample) == true {
-            logger.warning("\(thumbnailMessage)")
-          } else {
-            logger.debug("\(thumbnailMessage)")
-          }
-        }
-      }
     }
   }
 
@@ -250,19 +234,29 @@ class Clipboard: @unchecked Sendable {
   }
 
   private func shouldIgnore(_ item: NSPasteboardItem) -> Bool {
-    for regexp in AppPreferences.ignoreRegexp {
-      if let string = item.string(forType: .string) {
-        do {
-          let regex = try NSRegularExpression(pattern: regexp)
-          if regex.numberOfMatches(in: string, range: NSRange(string.startIndex..., in: string)) > 0 {
-            return true
-          }
-        } catch {
-          return false
-        }
+    let regexps = ignoreRegexps()
+    guard !regexps.isEmpty, let string = item.string(forType: .string) else {
+      return false
+    }
+
+    let range = NSRange(string.startIndex..., in: string)
+    for regex in regexps {
+      if regex.numberOfMatches(in: string, range: range) > 0 {
+        return true
       }
     }
     return false
+  }
+
+  private func ignoreRegexps() -> [NSRegularExpression] {
+    let patterns = AppPreferences.ignoreRegexp
+    guard patterns != cachedIgnoreRegexpPatterns else {
+      return cachedIgnoreRegexps
+    }
+
+    cachedIgnoreRegexpPatterns = patterns
+    cachedIgnoreRegexps = patterns.compactMap { try? NSRegularExpression(pattern: $0) }
+    return cachedIgnoreRegexps
   }
 
   private func isEmptyString(_ item: NSPasteboardItem) -> Bool {

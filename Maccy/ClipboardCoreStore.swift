@@ -129,60 +129,6 @@ final class ClipboardCoreStore {
     }
   }
 
-  @discardableResult
-  func generatePendingThumbnails(limit: Int = 20) -> Int {
-    let jobs = {
-      do {
-        return try database.pendingThumbnailJobs(limit: limit)
-      } catch {
-        logger.error("Failed to load pending thumbnail jobs: \(error.localizedDescription)")
-        return []
-      }
-    }()
-
-    var generated = 0
-
-    for job in jobs {
-      let originalData: Data
-      do {
-        originalData = try assetStore.read(job.assetPath)
-      } catch {
-        logger.error("Failed to read image asset for thumbnail \(job.assetPath): \(error.localizedDescription)")
-        continue
-      }
-
-      guard let thumbnailData = ImageThumbnailGenerator.pngThumbnail(from: originalData, maxPixelSize: 512) else {
-        logger.error("Failed to generate thumbnail data for asset \(job.assetPath)")
-        continue
-      }
-
-      let thumbnailAsset: StoredAsset
-      do {
-        thumbnailAsset = try assetStore.write(thumbnailData, type: ClipboardContentType.png)
-      } catch {
-        logger.error("Failed to write thumbnail asset for \(job.assetPath): \(error.localizedDescription)")
-        continue
-      }
-
-      do {
-        try database.markThumbnailGenerated(
-          contentHash: job.contentHash,
-          thumbnailPath: thumbnailAsset.relativePath
-        )
-        generated += 1
-      } catch {
-        logger.error("Failed to mark thumbnail generated for \(job.assetPath): \(error.localizedDescription)")
-        do {
-          try assetStore.remove(thumbnailAsset.relativePath)
-        } catch {
-          logger.error("Failed to remove orphan thumbnail \(thumbnailAsset.relativePath): \(error.localizedDescription)")
-        }
-      }
-    }
-
-    return generated
-  }
-
   var storageSize: String {
     let urls = [
       root.appending(path: "Clipboard.sqlite"),

@@ -274,7 +274,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
   private func togglePinCurrentItem() {
     guard let item = selectedItem() else { return }
-    History.shared.togglePin(item)
+    ClipboardCoreStore.shared.setPinned(!item.isPinned, itemID: item.itemID)
     reload(query: searchField.stringValue, force: true)
   }
 

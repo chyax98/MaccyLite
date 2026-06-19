@@ -32,9 +32,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     Clipboard.shared.start()
     DailyExportScheduler.shared.start()
-    DispatchQueue.global(qos: .utility).async {
-      _ = ClipboardCoreStore.shared.generatePendingThumbnails(limit: 4)
-    }
 
     statusItemVisibilityObserver = observe(\.statusItem.isVisible, options: .new) { _, change in
       if let newValue = change.newValue, AppPreferences.showInStatusBar != newValue {
