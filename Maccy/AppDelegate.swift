@@ -31,7 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     Clipboard.shared.start()
     DailyExportScheduler.shared.start()
     DispatchQueue.global(qos: .utility).async {
-      _ = ClipboardCoreStore.shared.generatePendingThumbnails(limit: 100)
+      _ = ClipboardCoreStore.shared.generatePendingThumbnails(limit: 4)
     }
 
     Task {

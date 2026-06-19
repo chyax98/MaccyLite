@@ -235,12 +235,7 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
       return data
     }
 
-    guard let assetPath = content.assetPath,
-          let data = ClipboardCoreStore.shared.data(assetPath: assetPath) else {
-      return content.inlineData
-    }
-
-    return ImageThumbnailGenerator.pngThumbnail(from: data, maxPixelSize: Int(Self.thumbnailImageSize.width))
+    return nil
   }
 
   private static func previewData(for item: ClipboardStoredItem) -> Data? {
@@ -253,13 +248,7 @@ class HistoryItemDecorator: Identifiable, Hashable, HasVisibility {
       return data
     }
 
-    guard let assetPath = content.assetPath,
-          let data = ClipboardCoreStore.shared.data(assetPath: assetPath) else {
-      return content.inlineData
-    }
-
-    let maxPixelSize = Int(max(Self.previewImageSize.width, Self.previewImageSize.height))
-    return ImageThumbnailGenerator.pngThumbnail(from: data, maxPixelSize: maxPixelSize)
+    return nil
   }
 
   private static func imageContent(in item: ClipboardStoredItem) -> ClipboardStoredContent? {

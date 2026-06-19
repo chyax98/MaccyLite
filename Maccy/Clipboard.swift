@@ -230,7 +230,7 @@ class Clipboard: @unchecked Sendable {
 
       if coreItem.contents.contains(where: { $0.imageWidth != nil || $0.imageHeight != nil }) {
         let thumbnailStartedAt = ContinuousClock.now
-        let generated = ClipboardCoreStore.shared.generatePendingThumbnails()
+        let generated = ClipboardCoreStore.shared.generatePendingThumbnails(limit: 2)
         let elapsed = thumbnailStartedAt.duration(to: ContinuousClock.now).milliseconds
         let thumbnailSample = ThumbnailPerformanceSample(
           generatedCount: generated,
