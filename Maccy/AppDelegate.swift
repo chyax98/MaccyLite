@@ -11,6 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     statusItem.button?.action = #selector(performStatusItemClick)
     statusItem.button?.image = NSImage(named: .maccyStatusBar)
     statusItem.button?.imagePosition = .imageLeft
+    statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
     statusItem.button?.target = self
     return statusItem
   }()
@@ -70,6 +71,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     if let event = NSApp.currentEvent {
       let modifierFlags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
+      if event.type == .rightMouseUp || modifierFlags.contains(.control) {
+        showStatusMenu()
+        return
+      }
+
       if modifierFlags.contains(.option) {
         AppPreferences.ignoreEvents.toggle()
 
@@ -83,6 +89,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     togglePopup(height: AppState.shared.popup.height, at: .statusItem)
+  }
+
+  @objc
+  @MainActor
+  private func openPreferences() {
+    AppState.shared.openPreferences()
+  }
+
+  @objc
+  private func toggleIgnoreEventsFromMenu(_ sender: NSMenuItem) {
+    AppPreferences.ignoreEvents.toggle()
+    statusItem.button?.appearsDisabled = isStatusItemDisabled
+    sender.state = AppPreferences.ignoreEvents ? .on : .off
+  }
+
+  @objc
+  private func openAbout() {
+    AppState.shared.openAbout()
+  }
+
+  @objc
+  private func quit() {
+    AppState.shared.quit()
   }
 
   func openPopup(height: CGFloat, at popupPosition: PopupPosition = AppPreferences.popupPosition) {
@@ -142,5 +171,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     )
     self.panel = panel
     return panel
+  }
+
+  private func showStatusMenu() {
+    let menu = NSMenu()
+    let settingsItem = NSMenuItem(
+      title: "设置…",
+      action: #selector(openPreferences),
+      keyEquivalent: ","
+    )
+    settingsItem.target = self
+    menu.addItem(settingsItem)
+    menu.addItem(.separator())
+
+    let pauseItem = NSMenuItem(
+      title: "暂停记录",
+      action: #selector(toggleIgnoreEventsFromMenu(_:)),
+      keyEquivalent: ""
+    )
+    pauseItem.target = self
+    pauseItem.state = AppPreferences.ignoreEvents ? .on : .off
+    menu.addItem(pauseItem)
+
+    menu.addItem(.separator())
+    let aboutItem = NSMenuItem(
+      title: "关于 MaccyLite",
+      action: #selector(openAbout),
+      keyEquivalent: ""
+    )
+    aboutItem.target = self
+    menu.addItem(aboutItem)
+
+    let quitItem = NSMenuItem(
+      title: "退出 MaccyLite",
+      action: #selector(quit),
+      keyEquivalent: "q"
+    )
+    quitItem.target = self
+    menu.addItem(quitItem)
+
+    statusItem.menu = menu
+    statusItem.button?.performClick(nil)
+    statusItem.menu = nil
   }
 }
