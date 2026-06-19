@@ -3,7 +3,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-  var panel: FloatingPanel<ContentView>?
+  var panel: AppKitHistoryPanel?
 
   @objc
   private lazy var statusItem: NSStatusItem = {
@@ -135,7 +135,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func isPopupPresented() -> Bool {
-    panel?.isPresented == true
+    panel?.isOpen() == true
   }
 
   private func synchronizeMenuIconText() {
@@ -187,19 +187,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
   }
 
-  private func popupPanel() -> FloatingPanel<ContentView> {
+  private func popupPanel() -> AppKitHistoryPanel {
     if let panel {
       return panel
     }
 
-    let panel = FloatingPanel(
+    let panel = AppKitHistoryPanel(
       contentRect: NSRect(origin: .zero, size: Defaults[.windowSize]),
       identifier: Bundle.main.bundleIdentifier ?? "com.local.MaccyLite",
-      statusBarButton: statusItem.button,
-      onClose: { AppState.shared.popup.reset() }
-    ) {
-      ContentView()
-    }
+      statusBarButton: statusItem.button
+    )
     self.panel = panel
     return panel
   }
