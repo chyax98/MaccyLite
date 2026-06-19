@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -7,6 +8,34 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def fail(message: str) -> None:
   raise SystemExit(f"non-gui validation check failed: {message}")
+
+
+def git_tracked_files() -> list[str]:
+  try:
+    result = subprocess.run(
+      ["git", "ls-files"],
+      cwd=ROOT,
+      check=True,
+      capture_output=True,
+      text=True,
+    )
+  except (FileNotFoundError, subprocess.CalledProcessError):
+    return []
+  return result.stdout.splitlines()
+
+
+for tracked_path in git_tracked_files():
+  if (
+    tracked_path == ".build"
+    or tracked_path.startswith(".build/")
+    or tracked_path == "ClipboardCore/.build"
+    or tracked_path.startswith("ClipboardCore/.build/")
+    or tracked_path == "DerivedData"
+    or tracked_path.startswith("DerivedData/")
+    or tracked_path.endswith(".xcuserstate")
+    or ".xcuserdata/" in tracked_path
+  ):
+    fail(f"generated file is tracked by git: {tracked_path}")
 
 
 testplan = json.loads((ROOT / "Maccy.xctestplan").read_text())
