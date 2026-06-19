@@ -26,6 +26,20 @@ def git_tracked_files() -> list[str]:
   return result.stdout.splitlines()
 
 
+def require_file(path: str) -> str:
+  file_path = ROOT / path
+  if not file_path.is_file():
+    fail(f"required file is missing: {path}")
+  return file_path.read_text(errors="ignore")
+
+
+def require_text(path: str, *snippets: str) -> None:
+  text = require_file(path)
+  for snippet in snippets:
+    if snippet not in text:
+      fail(f"{path} must mention {snippet}")
+
+
 for tracked_path in git_tracked_files():
   if (
     tracked_path == ".build"
@@ -39,6 +53,26 @@ for tracked_path in git_tracked_files():
   ):
     fail(f"generated file is tracked by git: {tracked_path}")
 
+require_text(
+  "docs/release-notes.md",
+  "Existing Maccy clipboard history is not migrated.",
+  "Existing Maccy settings are not migrated.",
+  "~/Library/Application Support/MaccyLite/",
+)
+require_text(
+  "docs/productization-acceptance-matrix.md",
+  "docs/manual-acceptance.md",
+  "scripts/validate-non-gui.sh",
+  "scripts/validate-performance.sh",
+  "不迁移旧历史和设置",
+)
+require_text(
+  "docs/manual-acceptance.md",
+  "Accessibility",
+  "Clipboard capture sample",
+  "复制失败",
+  "每日导出失败",
+)
 
 testplan = json.loads((ROOT / "Maccy.xctestplan").read_text())
 if testplan.get("testTargets") != []:
