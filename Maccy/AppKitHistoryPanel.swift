@@ -340,7 +340,7 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
 
     previewLabel.textColor = .secondaryLabelColor
     previewLabel.lineBreakMode = .byCharWrapping
-    previewLabel.maximumNumberOfLines = 0
+    previewLabel.maximumNumberOfLines = 12
     previewLabel.usesSingleLineMode = false
     previewLabel.cell?.wraps = true
     previewLabel.cell?.isScrollable = false
