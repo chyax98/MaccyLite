@@ -339,8 +339,12 @@ final class AppKitHistoryPanel: NSPanel, NSWindowDelegate, NSSearchFieldDelegate
     previewTextScrollView.isHidden = true
 
     previewLabel.textColor = .secondaryLabelColor
-    previewLabel.lineBreakMode = .byTruncatingMiddle
-    previewLabel.maximumNumberOfLines = 8
+    previewLabel.lineBreakMode = .byCharWrapping
+    previewLabel.maximumNumberOfLines = 0
+    previewLabel.usesSingleLineMode = false
+    previewLabel.cell?.wraps = true
+    previewLabel.cell?.isScrollable = false
+    previewLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     previewLabel.translatesAutoresizingMaskIntoConstraints = false
 
     previewStack.orientation = .vertical
